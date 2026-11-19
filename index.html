@@ -56,7 +56,7 @@ nav button.on{color:var(--acc);font-weight:700}
 .qb.hot{background:var(--acc2);border-color:var(--acc)}
 .list .it{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
 .list .it:first-child{border-top:0}
-.list .tm{color:var(--sub);font-size:13px;width:42px;flex:none}
+.list .tm{color:var(--sub);font-size:12px;width:54px;flex:none}
 .list .bd{flex:1;min-width:0}
 .list .memo{color:var(--sub);font-size:13px;white-space:pre-wrap;word-break:break-word}
 .alert{background:var(--warnbg);border:1px solid var(--warn);color:var(--ink);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
@@ -158,6 +158,8 @@ const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)
 const parseT=t=>{const [a,b]=t.split('T');const d=parseD(a);const [h,mi]=(b||'00:00').split(':').map(Number);d.setHours(h,mi);return d;};
 const addDays=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return dstr(d);};
 const fmtDay=s=>{const d=parseD(s);return (d.getMonth()+1)+'月'+d.getDate()+'日('+WD[d.getDay()]+')';};
+const tmOf=r=>r.nt?'時刻なし':r.t.slice(11,16);
+const effT=r=>{const d=parseT(r.t),n=new Date();return d>n?n:d;};
 const r1=x=>Math.round(x*10)/10;
 const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0;};
 function toast(msg,actLabel,act){
@@ -259,7 +261,7 @@ function stats(c,d){
     else if(r.type==='bowl'){s.bowl+=bowlMl(r);s.hasWater=true;}
     else if(r.type==='food'){s.food+=moist(r);if(r.kind==='dry')s.dry+=eaten(r);else s.wet+=eaten(r);if(moist(r)>0)s.hasWater=true;}
     else if(r.type==='pee'){s.pee++;if(r.blood||r.color==='赤・ピンク')s.flags=true;}
-    else if(r.type==='poop'){s.poop++;s.poopSt.push(num(r.st)||3);if(r.blood||r.mucus||r.foreign)s.flags=true;}
+    else if(r.type==='poop'){s.poop++;if(num(r.st))s.poopSt.push(num(r.st));if(r.blood||r.mucus||r.foreign)s.flags=true;}
     else if(r.type==='vomit')s.vomit++;
     else if(r.type==='weight')s.weight=num(r.kg);
     else if(r.type==='med')s.med++;
@@ -272,11 +274,11 @@ function stats(c,d){
 }
 function alerts(c){
   const out=[], now=new Date(), rs=S.recs.filter(r=>r.cat===c.id);
-  const last=t=>rs.filter(r=>r.type===t).map(r=>r.t).sort().pop();
+  const last=t=>rs.filter(r=>r.type===t).map(effT).sort((a,b)=>a-b).pop();
   const lp=last('pee');
-  if(lp){const h=(now-parseT(lp))/36e5;if(h>=num(S.settings.peeH))out.push('おしっこの記録が '+Math.floor(h)+' 時間ありません');}
+  if(lp){const h=(now-lp)/36e5;if(h>=num(S.settings.peeH))out.push('おしっこの記録が '+Math.floor(h)+' 時間ありません');}
   const lo=last('poop');
-  if(lo){const dd=(now-parseT(lo))/864e5;if(dd>=num(S.settings.poopD))out.push('うんちの記録が '+Math.floor(dd)+' 日ありません');}
+  if(lo){const dd=(now-lo)/864e5;if(dd>=num(S.settings.poopD))out.push('うんちの記録が '+Math.floor(dd)+' 日ありません');}
   const y=addDays(today(),-1), sy=stats(c,y);
   if(sy.hasWater){
     const prev=[];for(let i=2;i<=8;i++){const s=stats(c,addDays(today(),-i));if(s.hasWater)prev.push(s.total);}
@@ -284,10 +286,10 @@ function alerts(c){
       if(avg>0&&sy.total>=avg*1.5)out.push('昨日の水分量（'+Math.round(sy.total)+'ml）が直近平均（'+Math.round(avg)+'ml）より大きく増えています');
       if(avg>0&&sy.total<=avg*0.5)out.push('昨日の水分量（'+Math.round(sy.total)+'ml）が直近平均（'+Math.round(avg)+'ml）より大きく減っています');}
   }
-  const in24=r=>(now-parseT(r.t))<=864e5&&parseT(r.t)<=now;
+  const in24=r=>(now-effT(r))<=864e5;
   const vom=rs.filter(r=>r.type==='vomit'&&in24(r)).length;if(vom>=2)out.push('24時間以内に嘔吐が '+vom+' 回あります');
   if(rs.some(r=>in24(r)&&r.type==='poop'&&num(r.st)===5))out.push('24時間以内に水様便の記録があります');
-  if(rs.some(r=>(now-parseT(r.t))<=2*864e5&&((r.type==='pee'&&(r.blood||r.color==='赤・ピンク'))||(r.type==='poop'&&(r.blood||r.color==='赤っぽい'||r.color==='黒っぽい')))))out.push('48時間以内に血が混じった・色の異常の記録があります');
+  if(rs.some(r=>(now-effT(r))<=2*864e5&&((r.type==='pee'&&(r.blood||r.color==='赤・ピンク'))||(r.type==='poop'&&(r.blood||r.color==='赤っぽい'||r.color==='黒っぽい')))))out.push('48時間以内に血が混じった・色の異常の記録があります');
   const ws=rs.filter(r=>r.type==='weight').sort((a,b)=>a.t<b.t?-1:1);
   if(ws.length>=2){const L=ws[ws.length-1];const lim=addDays(L.t.slice(0,10),-30);const base=ws.find(r=>r.t.slice(0,10)>=lim&&r!==L);
     if(base&&num(base.kg)>0){const ch=(num(L.kg)-num(base.kg))/num(base.kg);if(Math.abs(ch)>=0.05)out.push('体重が30日以内に '+(ch>0?'+':'')+r1(ch*100)+'% 変化しています（'+base.kg+'→'+L.kg+'kg）');}}
@@ -337,20 +339,18 @@ function vRec(){
      '<div><span>体重</span><b>'+(s.weight!=null?s.weight+' kg':(s.w?'<span class="sub">'+s.w+' kg</span>':'—'))+'</b></div>'+
      '<div><span>小</span><b>'+s.pee+' 回</b></div><div><span>大</span><b>'+s.poop+' 回</b></div><div><span>嘔吐</span><b>'+s.vomit+' 回</b></div></div></div>';
   h+='<div class="card"><h2>記録する</h2><div class="grid">'+
-     '<div class="qb hot" onclick="quick(\'pee\')"><span class="i">🟡</span>小 1回<br><span class="sub">ワンタップ</span></div>'+
-     '<div class="qb hot" onclick="quick(\'poop\')"><span class="i">🟤</span>大 普通<br><span class="sub">ワンタップ</span></div>'+
+     '<div class="qb hot" onclick="openForm(\'pee\')"><span class="i">🟡</span>小</div>'+
+     '<div class="qb hot" onclick="openForm(\'poop\')"><span class="i">🟤</span>大</div>'+
      '<div class="qb" onclick="openForm(\'bowl\')"><span class="i">💧</span>器の水</div>'+
      '<div class="qb" onclick="openForm(\'mix\')"><span class="i">🥣</span>食事に混ぜた水</div>'+
      '<div class="qb" onclick="openForm(\'food\')"><span class="i">🍚</span>食事</div>'+
-     '<div class="qb" onclick="openForm(\'pee\')"><span class="i">🟡</span>小（詳細）</div>'+
-     '<div class="qb" onclick="openForm(\'poop\')"><span class="i">🟤</span>大（詳細）</div>'+
      '<div class="qb" onclick="openForm(\'vomit\')"><span class="i">🤮</span>嘔吐</div>'+
      '<div class="qb" onclick="openForm(\'weight\')"><span class="i">⚖️</span>体重</div>'+
      '<div class="qb" onclick="openForm(\'med\')"><span class="i">💊</span>投薬・通院</div>'+
      '<div class="qb" onclick="openForm(\'memo\')"><span class="i">📝</span>メモ</div>'+
      '</div></div>';
   const rs=dayRecs(c.id,d);
-  h+='<div class="card"><h2>'+fmtDay(d)+'の記録</h2>'+(rs.length?'<div class="list">'+rs.map(itemHTML).join('')+'</div>':'<div class="empty">まだ記録がありません</div>')+'</div>';
+  h+='<div class="card"><h2>'+fmtDay(d)+'の記録</h2>'+(rs.length?'<div class="sub" style="margin:-4px 0 6px">あとから量・状態・時刻・メモを追加できます</div>':'')+(rs.length?'<div class="list">'+rs.map(itemHTML).join('')+'</div>':'<div class="empty">まだ記録がありません</div>')+'</div>';
   return h;
 }
 function lastBackup(){try{return localStorage.getItem(BK_KEY);}catch(e){return null;}}
@@ -363,7 +363,7 @@ function backupBanner(){
 }
 function shiftDay(n){UI.day=addDays(UI.day||today(),n);if(UI.day===today())UI.day=null;render();}
 function itemHTML(r){
-  return '<div class="it" onclick="openForm(\''+r.type+'\',\''+r.id+'\')"><div class="tm">'+r.t.slice(11,16)+'</div><div class="bd"><div>'+T[r.type].ic+' <b>'+T[r.type].l+'</b> '+esc(recLine(r))+recTags(r)+'</div>'+(r.memo?'<div class="memo">'+esc(r.memo)+'</div>':'')+'</div></div>';
+  return '<div class="it" onclick="openForm(\''+r.type+'\',\''+r.id+'\')"><div class="tm">'+tmOf(r)+'</div><div class="bd"><div>'+T[r.type].ic+' <b>'+T[r.type].l+'</b> '+esc(recLine(r))+recTags(r)+'</div>'+(r.memo?'<div class="memo">'+esc(r.memo)+'</div>':'')+'</div><button type="button" class="btn sm" style="flex:none;align-self:center">✏️ 編集・追記</button></div>';
 }
 function lbl(arr,v){const x=arr.find(a=>String(a[0])===String(v));return x?x[1]:'';}
 function recLine(r){
@@ -371,8 +371,8 @@ function recLine(r){
     case 'mix':return num(r.ml)+' ml';
     case 'bowl':return bowlMl(r)+' ml（入れた'+num(r.put)+' − 残り'+num(r.left)+(num(r.evap)?' − 蒸発'+num(r.evap):'')+'）';
     case 'food':return (r.fname||'')+' '+r1(eaten(r))+' g 食べた（水分 約'+Math.round(moist(r))+' ml）';
-    case 'pee':return '量:'+lbl(PEE_SIZE,r.size)+(r.color?' 色:'+r.color:'');
-    case 'poop':return lbl(POOP_ST,r.st)+' 量:'+lbl(SIZE,r.size)+(r.color?' 色:'+r.color:'');
+    case 'pee':return [r.size?'量:'+lbl(PEE_SIZE,r.size):'',r.color?'色:'+r.color:''].filter(Boolean).join(' ')||'（詳細未記入）';
+    case 'poop':return [r.st?lbl(POOP_ST,r.st):'',r.size?'量:'+lbl(SIZE,r.size):'',r.color?'色:'+r.color:''].filter(Boolean).join(' ')||'（詳細未記入）';
     case 'vomit':return r.kind||'';
     case 'weight':return num(r.kg)+' kg';
     case 'med':return (r.kind||'')+(r.what?'：'+r.what:'');
@@ -383,12 +383,6 @@ function recTags(r){
   let t='';
   if(r.blood)t+='<span class="tag">血</span>';if(r.mucus)t+='<span class="tag">粘液</span>';if(r.foreign)t+='<span class="tag">異物</span>';if(r.outside)t+='<span class="tag">トイレ外</span>';
   return t;
-}
-function quick(type){
-  const c=cat();const t=UI.day?UI.day+'T12:00':nowT();
-  const r=type==='pee'?{id:uid(),cat:c.id,t,type,size:2,color:'普通'}:{id:uid(),cat:c.id,t,type,st:3,size:2,color:'普通'};
-  S.recs.push(r);markRec(r);commit();
-  toast(T[type].l+'を記録しました','詳細を編集',()=>openForm(type,r.id));
 }
 
 /* ========== 入力フォーム ========== */
@@ -404,18 +398,18 @@ function openForm(type,id){
   const isNew=!r;
   if(!r){
     const L=lastOf(type)||{};
-    r={type,cat:c.id,t:UI.day?UI.day+'T'+nowT().slice(11):nowT()};
+    r={type,cat:c.id,t:(UI.day||today())+'T23:59',nt:true};
     if(type==='bowl'){r.put=L.put;r.evap=L.evap;}
     if(type==='mix')r.ml=L.ml;
     if(type==='food'){r.foodId=L.foodId;}
-    if(type==='pee'){r.size=2;r.color='普通';}
-    if(type==='poop'){r.st=3;r.size=2;r.color='普通';}
     if(type==='med')r.kind='投薬';
     if(type==='weight')r.kg=L.kg||c.weight||'';
   }
   FORM={type,id,isNew};
   let b='<h3>'+T[type].ic+' '+T[type].l+(isNew?'':'（編集）')+'</h3>';
-  b+='<div class="f"><label>日時</label><input type="datetime-local" id="f_t" value="'+r.t+'"></div>';
+  b+='<div class="two"><div class="f"><label>日付</label><input type="date" id="f_d" value="'+r.t.slice(0,10)+'"></div>'+
+    '<div class="f"><label>時刻（わかれば）</label><div class="row"><input type="time" id="f_h" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)" value="'+(r.nt?'':r.t.slice(11,16))+'"><button type="button" class="btn sm" onclick="$(\'f_h\').value=\'\'" title="時刻を消す">×</button></div></div></div>'+
+    '<div class="sub" style="margin:-6px 0 10px">時刻は空欄のままでも保存できます。<button type="button" class="btn sm" style="margin-left:4px" onclick="$(\'f_h\').value=nowT().slice(11)">今の時刻</button></div>';
   if(type==='mix')b+=numF('f_ml','水の量',r.ml,1,'ml');
   if(type==='bowl'){
     b+='<div class="three">'+numF('f_put','入れた量',r.put,1,'ml')+numF('f_left','残った量',r.left,1,'ml')+numF('f_evap','蒸発分',r.evap,1,'ml')+'</div>';
@@ -429,6 +423,7 @@ function openForm(type,id){
       '</select><div class="sub">フードの種類と水分率は「設定」で追加・変更できます。</div></div>';
     b+='<div class="two">'+numF('f_given','与えた量',r.given,0.1,'g')+numF('f_left','残した量',r.left,0.1,'g')+'</div><div class="calc" id="calc"></div>';
   }
+  if(type==='pee'||type==='poop')b+='<div class="sub" style="margin-bottom:8px">わからない項目は未選択のままで大丈夫です（あとから追記できます）。選んだボタンをもう一度押すと解除できます。</div>';
   if(type==='pee'){
     b+='<div class="f"><label>量（砂の塊の大きさ）</label>'+seg('size',PEE_SIZE,r.size)+'</div>';
     b+='<div class="f"><label>色</label>'+seg('color',PEE_COL,r.color)+'</div>';
@@ -454,16 +449,16 @@ function formCalc(){
 }
 function formSave(){
   const c=cat(), ty=FORM.type;
-  const t=$('f_t').value;if(!t){toast('日時を入れてください');return;}
-  const r={id:FORM.id||uid(),cat:c.id,t:t.slice(0,16),type:ty};
+  const dd=$('f_d').value||UI.day||today(), hh=$('f_h').value;
+  const r={id:FORM.id||uid(),cat:c.id,t:dd+'T'+(hh?hh.slice(0,5):'23:59'),type:ty};if(!hh)r.nt=true;
   const memo=$('f_memo').value.trim();if(memo)r.memo=memo;
   const v=id=>$(id).value;
   if(ty==='mix'){if(v('f_ml')==='')return toast('量を入れてください');r.ml=num(v('f_ml'));}
   if(ty==='bowl'){if(v('f_put')===''||v('f_left')==='')return toast('入れた量と残った量を入れてください');r.put=num(v('f_put'));r.left=num(v('f_left'));if(v('f_evap')!=='')r.evap=num(v('f_evap'));}
   if(ty==='food'){const f=foodOf(v('f_food'));if(!f)return toast('フードを選んでください');if(v('f_given')==='')return toast('与えた量を入れてください');
     r.foodId=f.id;r.fname=f.name;r.kind=f.kind;r.pct=num(f.pct);r.given=num(v('f_given'));r.left=num(v('f_left'));}
-  if(ty==='pee'){r.size=num(segVal('size'))||2;r.color=segVal('color');['blood','outside'].forEach(k=>{if($('k_'+k).checked)r[k]=true;});}
-  if(ty==='poop'){r.st=num(segVal('st'))||3;r.size=num(segVal('size'))||2;r.color=segVal('color');['blood','mucus','foreign','outside'].forEach(k=>{if($('k_'+k).checked)r[k]=true;});}
+  if(ty==='pee'){if(segVal('size'))r.size=num(segVal('size'));if(segVal('color'))r.color=segVal('color');['blood','outside'].forEach(k=>{if($('k_'+k).checked)r[k]=true;});}
+  if(ty==='poop'){if(segVal('st'))r.st=num(segVal('st'));if(segVal('size'))r.size=num(segVal('size'));if(segVal('color'))r.color=segVal('color');['blood','mucus','foreign','outside'].forEach(k=>{if($('k_'+k).checked)r[k]=true;});}
   if(ty==='vomit')r.kind=segVal('kind');
   if(ty==='weight'){if(v('f_kg')==='')return toast('体重を入れてください');r.kg=num(v('f_kg'));}
   if(ty==='med'){r.kind=segVal('kind');r.what=v('f_what').trim();}
@@ -590,8 +585,8 @@ function reportHTML(from,to){
     days.map((d,i)=>{const s=ss[i];if(!s.n)return '<tr><td>'+shortD(d)+'</td><td colspan="11" style="text-align:center;color:var(--sub)">記録なし</td></tr>';
       return '<tr><td>'+shortD(d)+'('+WD[parseD(d).getDay()]+')</td><td>'+Math.round(s.mix)+'</td><td>'+Math.round(s.bowl)+'</td><td>'+Math.round(s.food)+'</td><td><b>'+Math.round(s.total)+'</b></td><td>'+(s.perKg!=null?r1(s.perKg):'—')+'</td><td>'+r1(s.dry)+'</td><td>'+r1(s.wet)+'</td><td>'+s.pee+'</td><td>'+s.poop+(s.poopSt.length?'('+s.poopSt.join(',')+')':'')+'</td><td>'+s.vomit+'</td><td>'+(s.weight!=null?s.weight:'')+'</td></tr>';}).join('')+'</table></div>';
   h+='<div class="sub">大の状態：1=コロコロ 2=やや硬い 3=普通 4=軟らかい 5=水様。水分はml。'+(S.settings.inclFood?'合計にフードの水分を含む。':'合計にフードの水分は含まない。')+'</div>';
-  const notes=[];days.forEach(d=>dayRecs(c.id,d).forEach(r=>{const tg=recTags(r).replace(/<[^>]+>/g,' ').trim();if(r.memo||tg||['vomit','med'].includes(r.type)||(r.type==='poop'&&num(r.st)!==3)||(r.type==='pee'&&r.color&&r.color!=='普通'))notes.push({r,tg});}));
-  h+='<h2 style="margin-top:12px">特記事項・メモ</h2>'+(notes.length?'<div class="list">'+notes.map(o=>'<div class="it" style="cursor:default"><div class="tm" style="width:76px">'+shortD(o.r.t.slice(0,10))+' '+o.r.t.slice(11,16)+'</div><div class="bd">'+T[o.r.type].ic+' <b>'+T[o.r.type].l+'</b> '+esc(recLine(o.r))+(o.tg?' ['+esc(o.tg)+']':'')+(o.r.memo?'<div class="memo">'+esc(o.r.memo)+'</div>':'')+'</div></div>').join('')+'</div>':'<div class="empty">なし</div>');
+  const notes=[];days.forEach(d=>dayRecs(c.id,d).forEach(r=>{const tg=recTags(r).replace(/<[^>]+>/g,' ').trim();if(r.memo||tg||['vomit','med'].includes(r.type)||(r.type==='poop'&&r.st&&num(r.st)!==3)||(r.type==='pee'&&r.color&&r.color!=='普通'))notes.push({r,tg});}));
+  h+='<h2 style="margin-top:12px">特記事項・メモ</h2>'+(notes.length?'<div class="list">'+notes.map(o=>'<div class="it" style="cursor:default"><div class="tm" style="width:76px">'+shortD(o.r.t.slice(0,10))+' '+tmOf(o.r)+'</div><div class="bd">'+T[o.r.type].ic+' <b>'+T[o.r.type].l+'</b> '+esc(recLine(o.r))+(o.tg?' ['+esc(o.tg)+']':'')+(o.r.memo?'<div class="memo">'+esc(o.r.memo)+'</div>':'')+'</div></div>').join('')+'</div>':'<div class="empty">なし</div>');
   return h;
 }
 function reportText(){
@@ -600,7 +595,7 @@ function reportText(){
   days.forEach((d,i)=>{const s=ss[i];if(!s.n)return;
     t+=fmtDay(d)+'  水分'+Math.round(s.total)+'ml（混ぜ'+Math.round(s.mix)+'/器'+Math.round(s.bowl)+'/フード'+Math.round(s.food)+'）'+(s.perKg!=null?' '+r1(s.perKg)+'ml/kg':'')+
       '  食事 ドライ'+r1(s.dry)+'g ウェット'+r1(s.wet)+'g  小'+s.pee+' 大'+s.poop+(s.poopSt.length?'('+s.poopSt.join(',')+')':'')+(s.vomit?' 嘔吐'+s.vomit:'')+(s.weight!=null?' 体重'+s.weight+'kg':'')+'\n';
-    dayRecs(c.id,d).forEach(r=>{const tg=recTags(r).replace(/<[^>]+>/g,' ').trim();if(r.memo||tg||r.type==='vomit'||r.type==='med')t+='   ・'+r.t.slice(11,16)+' '+T[r.type].l+' '+recLine(r)+(tg?' ['+tg+']':'')+(r.memo?' 「'+r.memo.replace(/\n/g,' ')+'」':'')+'\n';});
+    dayRecs(c.id,d).forEach(r=>{const tg=recTags(r).replace(/<[^>]+>/g,' ').trim();if(r.memo||tg||r.type==='vomit'||r.type==='med')t+='   ・'+tmOf(r)+' '+T[r.type].l+' '+recLine(r)+(tg?' ['+tg+']':'')+(r.memo?' 「'+r.memo.replace(/\n/g,' ')+'」':'')+'\n';});
   });
   return t+'※大の状態 1=コロコロ 2=やや硬い 3=普通 4=軟らかい 5=水様\n';
 }
@@ -689,7 +684,7 @@ function exportCsv(){
   const rows=[['猫','日時','種類','水分ml','食べた量g','体重kg','詳細','メモ']];
   S.recs.slice().sort((a,b)=>a.t<b.t?-1:1).forEach(r=>{const c=S.cats.find(x=>x.id===r.cat);
     const ml=r.type==='mix'?num(r.ml):r.type==='bowl'?bowlMl(r):r.type==='food'?Math.round(moist(r)):'';
-    rows.push([c?c.name:'',r.t.replace('T',' '),T[r.type].l,ml,r.type==='food'?r1(eaten(r)):'',r.type==='weight'?r.kg:'',recLine(r)+' '+recTags(r).replace(/<[^>]+>/g,' ').trim(),r.memo||'']);});
+    rows.push([c?c.name:'',r.t.slice(0,10)+(r.nt?'':' '+r.t.slice(11,16)),T[r.type].l,ml,r.type==='food'?r1(eaten(r)):'',r.type==='weight'?r.kg:'',recLine(r)+' '+recTags(r).replace(/<[^>]+>/g,' ').trim(),r.memo||'']);});
   saveFile('neko-records-'+today()+'.csv','﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),'text/csv');
 }
 function importFile(inp){
