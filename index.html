@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ねこの水分・トイレ帳</title>
+<meta name="theme-color" content="#2a7f8f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ねこ帳">
+<style>
+:root{
+  --bg:#f5f3ef;--card:#fff;--ink:#23211e;--sub:#76716a;--line:#e4e0d8;--acc:#2a7f8f;--acc2:#e3f1f3;
+  --mix:#e8954a;--bowl:#3a8bd6;--food:#9474cc;--total:#23211e;--warn:#c0392b;--warnbg:#fdecea;--ok:#2e8b57;
+  --dry:#c9a15a;--wet:#d46a8a;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#15171a;--card:#212428;--ink:#ecebe8;--sub:#a29d95;--line:#34383d;--acc:#5fb8c8;--acc2:#1f3539;
+  --mix:#f0a860;--bowl:#5aa6ee;--food:#ad92e0;--total:#ecebe8;--warn:#ef6b5e;--warnbg:#3a2220;--ok:#55c08a;
+  --dry:#dbb46e;--wet:#e5809f;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;font-size:15px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 14px 8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header select{max-width:45%;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:var(--card)}
+main{padding:12px 12px 90px;max-width:640px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);z-index:6;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:8px 0 10px;font-size:11px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .i{font-size:20px;line-height:1}
+nav button.on{color:var(--acc);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 8px}
+.sub{color:var(--sub);font-size:13px}
+.row{display:flex;align-items:center;gap:8px}
+.between{justify-content:space-between}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 12px;cursor:pointer}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+.btn.warn{color:var(--warn);border-color:var(--warn)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.daynav{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.daynav .d{flex:1;text-align:center;font-weight:700;font-size:16px}
+.big{font-size:28px;font-weight:800;letter-spacing:.5px}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.kv div{background:var(--bg);border-radius:10px;padding:6px 8px}
+.kv b{display:block;font-size:16px}
+.kv span{font-size:12px;color:var(--sub)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.qb{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 4px;text-align:center;cursor:pointer;font-size:13px}
+.qb .i{font-size:22px;display:block}
+.qb.hot{background:var(--acc2);border-color:var(--acc)}
+.list .it{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+.list .it:first-child{border-top:0}
+.list .tm{color:var(--sub);font-size:13px;width:42px;flex:none}
+.list .bd{flex:1;min-width:0}
+.list .memo{color:var(--sub);font-size:13px;white-space:pre-wrap;word-break:break-word}
+.alert{background:var(--warnbg);border:1px solid var(--warn);color:var(--ink);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.alert b{color:var(--warn)}
+.alert ul{margin:4px 0 4px 18px;padding:0}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--warnbg);color:var(--warn);margin-left:4px}
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.md{background:var(--card);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.md h3{margin:0 0 10px;font-size:17px}
+.f{margin-bottom:12px}
+.f>label{display:block;font-size:13px;color:var(--sub);margin-bottom:4px}
+.f input[type=number],.f input[type=text],.f input[type=datetime-local],.f input[type=date],.f select,.f textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.f textarea{min-height:80px;resize:vertical}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:7px 10px;font-size:14px;cursor:pointer}
+.seg button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+.chk{display:flex;flex-wrap:wrap;gap:6px}
+.chk label{border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:14px;display:flex;align-items:center;gap:5px;background:var(--bg)}
+.calc{background:var(--acc2);border-radius:10px;padding:8px 10px;font-weight:700;margin-bottom:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal .h{text-align:center;font-size:11px;color:var(--sub);padding:2px 0}
+.cal .c{background:var(--card);border:1px solid var(--line);border-radius:8px;min-height:68px;padding:3px;font-size:10px;line-height:1.3;cursor:pointer;overflow:hidden}
+.cal .c.out{opacity:.35}
+.cal .c.today{border-color:var(--acc);border-width:2px}
+.cal .c .n{font-weight:700;font-size:12px}
+.cal .c .w{color:var(--bowl);font-weight:700}
+.cal .c .ic{font-size:10px}
+.sun{color:#d0473a}.sat{color:#3a76d0}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--sub);margin-top:6px}
+svg text{font-size:10px;fill:var(--sub)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:5px 4px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--sub);font-weight:600;font-size:12px}
+.scroll{overflow-x:auto}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:12px;z-index:30;font-size:14px;max-width:90%;display:flex;gap:10px;align-items:center}
+.toast button{background:none;border:1px solid var(--bg);color:var(--bg);border-radius:8px;padding:2px 8px;font-size:13px}
+.setitem{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.setitem:first-of-type{border-top:0}
+.setitem .grow{flex:1;min-width:0}
+.sync{font-size:11px;color:var(--sub)}
+.empty{text-align:center;color:var(--sub);padding:18px 0}
+.pre{white-space:pre-wrap;word-break:break-word}
+</style>
+</head>
+<body>
+<header>
+  <h1>🐈 ねこの水分・トイレ帳</h1>
+  <select id="catSel" onchange="pickCat(this.value)"></select>
+</header>
+<main id="main"></main>
+<nav id="nav">
+  <button data-t="rec" onclick="go('rec')"><span class="i">✏️</span>記録</button>
+  <button data-t="graph" onclick="go('graph')"><span class="i">📈</span>グラフ</button>
+  <button data-t="cal" onclick="go('cal')"><span class="i">📅</span>カレンダー</button>
+  <button data-t="rep" onclick="go('rep')"><span class="i">📋</span>レポート</button>
+  <button data-t="set" onclick="go('set')"><span class="i">⚙️</span>設定</button>
+</nav>
+<div id="modal"></div>
+<div id="toast"></div>
+<input type="file" id="fileIn" accept=".json,application/json" style="display:none" onchange="importFile(this)">
+<script>
+"use strict";
+/* ========== 基本定義 ========== */
+const LS_KEY='nekoMizu.v1', UI_KEY='nekoMizu.ui';
+const T={
+  mix:{l:'食事に混ぜた水',ic:'🥣'}, bowl:{l:'器から飲んだ水',ic:'💧'}, food:{l:'食事',ic:'🍚'},
+  pee:{l:'小',ic:'🟡'}, poop:{l:'大',ic:'🟤'}, vomit:{l:'嘔吐',ic:'🤮'},
+  weight:{l:'体重',ic:'⚖️'}, med:{l:'投薬・通院',ic:'💊'}, memo:{l:'メモ',ic:'📝'}
+};
+const POOP_ST=[[1,'コロコロ(硬い)'],[2,'やや硬い'],[3,'普通'],[4,'軟らかい'],[5,'水様(下痢)']];
+const SIZE=[[1,'少'],[2,'普通'],[3,'多']];
+const PEE_SIZE=[[1,'小さい塊'],[2,'普通'],[3,'大きい塊']];
+const PEE_COL=[['普通','普通'],['薄い','薄い'],['濃い','濃い'],['赤・ピンク','赤・ピンク']];
+const POOP_COL=[['普通','普通(茶)'],['黒っぽい','黒っぽい'],['白っぽい','白っぽい'],['赤っぽい','赤っぽい'],['その他','その他']];
+const VOMIT=[['毛玉','毛玉'],['未消化フード','未消化フード'],['液体・泡','液体・泡'],['その他','その他']];
+const MED=[['投薬','投薬'],['通院','通院'],['その他','その他']];
+const WD='日月火水木金土';
+
+let S={cats:[],foods:[],settings:{inclFood:true,peeH:24,poopD:3},recs:[]};
+let UI={tab:'rec',cat:null,day:null,calYM:null,gDays:7,repFrom:null,repTo:null};
+let COL=null, wq=Promise.resolve(), dirty=new Set(), syncMsg='この端末のブラウザ内';
+const BK_KEY='nekoMizu.lastBackup', BK_DAYS=7;
+const FRAMED=(()=>{try{return window.self!==window.top;}catch(e){return true;}})();
+
+/* ========== ユーティリティ ========== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const pad=n=>String(n).padStart(2,'0');
+const dstr=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const nowT=()=>{const d=new Date();return dstr(d)+'T'+pad(d.getHours())+':'+pad(d.getMinutes());};
+const today=()=>dstr(new Date());
+const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const parseT=t=>{const [a,b]=t.split('T');const d=parseD(a);const [h,mi]=(b||'00:00').split(':').map(Number);d.setHours(h,mi);return d;};
+const addDays=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return dstr(d);};
+const fmtDay=s=>{const d=parseD(s);return (d.getMonth()+1)+'月'+d.getDate()+'日('+WD[d.getDay()]+')';};
+const r1=x=>Math.round(x*10)/10;
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0;};
+function toast(msg,actLabel,act){
+  const t=$('toast');t.innerHTML='<div class="toast"><span>'+esc(msg)+'</span>'+(actLabel?'<button id="tAct">'+esc(actLabel)+'</button>':'')+'</div>';
+  if(actLabel)$('tAct').onclick=()=>{t.innerHTML='';act();};
+  clearTimeout(toast.h);toast.h=setTimeout(()=>t.innerHTML='',actLabel?5000:2500);
+}
+
+/* ========== 保存（端末＋クラウド） ========== */
+function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}}
+function saveUI(){try{localStorage.setItem(UI_KEY,JSON.stringify({cat:UI.cat,gDays:UI.gDays}));}catch(e){}}
+function loadLocal(){
+  try{const j=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(j&&j.cats)S=normalize(j);}catch(e){}
+  try{const u=JSON.parse(localStorage.getItem(UI_KEY)||'null');if(u){UI.cat=u.cat;UI.gDays=u.gDays||7;}}catch(e){}
+}
+function normalize(j){
+  return {cats:j.cats||[],foods:j.foods||[],settings:Object.assign({inclFood:true,peeH:24,poopD:3},j.settings||{}),recs:j.recs||[]};
+}
+const mkey=r=>'m-'+r.cat+'-'+r.t.slice(0,7);
+function markRec(r){dirty.add(mkey(r));}
+function markMeta(){dirty.add('meta');}
+function commit(){saveLocal();render();flush();}
+function flush(){
+  if(!COL){dirty.clear();return;}
+  const keys=[...dirty];dirty.clear();
+  keys.forEach(k=>{wq=wq.then(()=>writeKey(k)).catch(dbErr);});
+}
+function writeKey(k){
+  if(k==='meta')return COL.doc('meta').set({cats:S.cats,foods:S.foods,settings:S.settings,v:1});
+  const m=k.match(/^m-(.+)-(\d{4}-\d{2})$/);if(!m)return;
+  const items=S.recs.filter(r=>r.cat===m[1]&&r.t.slice(0,7)===m[2]);
+  return items.length?COL.doc(k).set({items}):COL.doc(k).delete();
+}
+function dbErr(e){
+  const c=e&&e.code;
+  if(c==='quota_exceeded')toast('クラウドの保存容量がいっぱいです。端末には保存されています');
+  else if(c==='revoked'||c==='not_granted'||c==='invalid_argument'){COL=null;syncMsg='端末内に保存';if(UI.tab==='set')render();}
+  else toast('クラウド保存に失敗しました（端末には保存済み）');
+}
+function cap(name){
+  if(!FRAMED)return Promise.resolve(null);
+  return new Promise(res=>{let n=0;(function t(){
+    if(window.claude&&typeof window.claude.use==='function'){window.claude.use(name).then(res,()=>res(null));}
+    else if(n++<15)setTimeout(t,200);else res(null);
+  })();});
+}
+function fromDocs(docs){
+  const out={cats:[],foods:[],settings:{},recs:[]};let has=false;
+  docs.forEach(d=>{const b=JSON.parse(JSON.stringify(d.data()||{}));has=true;
+    if(d.id==='meta'){out.cats=b.cats||[];out.foods=b.foods||[];out.settings=b.settings||{};}
+    else if(d.id.startsWith('m-')&&Array.isArray(b.items))out.recs.push(...b.items);
+  });
+  return has?normalize(out):null;
+}
+async function initCloud(){
+  const db=await cap('db'), user=await cap('user');
+  if(!db||!user)return;
+  let id=null;try{id=await user.id();}catch(e){}
+  if(!id)return;
+  let col;try{col=db.collection('data/users/'+id);}catch(e){return;}
+  syncMsg='クラウドに接続中…';
+  const timer=setTimeout(()=>{if(!COL){syncMsg='クラウドに接続できません（端末内に保存）';if(UI.tab==='set')render();}},10000);
+  let first=true;
+  col.onSnapshot(snap=>{
+    if(snap.metadata.hasPendingWrites)return;
+    const remote=fromDocs(snap.docs);
+    if(snap.metadata.fromCache){ if(remote&&first){S=remote;saveLocal();render();} return; }
+    clearTimeout(timer);
+    if(first){first=false;COL=col;syncMsg='クラウドに自動保存（このアカウントの他の端末と共有）';
+      if(!remote){ if(S.cats.length||S.recs.length){markMeta();S.recs.forEach(markRec);flush();} if(UI.tab==='set')render(); return; }
+    }
+    if(remote){S=remote;saveLocal();render();}
+  },e=>{clearTimeout(timer);COL=null;syncMsg='端末内に保存';if(UI.tab==='set')render();});
+}
+
+/* ========== 計算 ========== */
+function cat(){return S.cats.find(c=>c.id===UI.cat)||S.cats[0]||null;}
+function foodOf(id){return S.foods.find(f=>f.id===id);}
+const bowlMl=r=>Math.max(0,num(r.put)-num(r.left)-num(r.evap));
+const eaten=r=>Math.max(0,num(r.given)-num(r.left));
+const moist=r=>eaten(r)*num(r.pct)/100;
+let IDX=null;
+function index(){
+  if(IDX)return IDX;
+  IDX={};S.recs.forEach(r=>{(IDX[r.cat]=IDX[r.cat]||{});const d=r.t.slice(0,10);(IDX[r.cat][d]=IDX[r.cat][d]||[]).push(r);});
+  Object.values(IDX).forEach(m=>Object.values(m).forEach(a=>a.sort((x,y)=>x.t<y.t?-1:1)));
+  return IDX;
+}
+function dayRecs(cid,d){const m=index()[cid];return (m&&m[d])||[];}
+function weightOn(c,d){
+  const ws=S.recs.filter(r=>r.cat===c.id&&r.type==='weight'&&r.t.slice(0,10)<=d).sort((a,b)=>a.t<b.t?-1:1);
+  return ws.length?num(ws[ws.length-1].kg):num(c.weight);
+}
+function stats(c,d){
+  const rs=dayRecs(c.id,d);
+  const s={mix:0,bowl:0,food:0,dry:0,wet:0,pee:0,poop:0,vomit:0,poopSt:[],flags:false,weight:null,med:0,memo:0,hasWater:false,n:rs.length};
+  rs.forEach(r=>{
+    if(r.type==='mix'){s.mix+=num(r.ml);s.hasWater=true;}
+    else if(r.type==='bowl'){s.bowl+=bowlMl(r);s.hasWater=true;}
+    else if(r.type==='food'){s.food+=moist(r);if(r.kind==='dry')s.dry+=eaten(r);else s.wet+=eaten(r);if(moist(r)>0)s.hasWater=true;}
+    else if(r.type==='pee'){s.pee++;if(r.blood||r.color==='赤・ピンク')s.flags=true;}
+    else if(r.type==='poop'){s.poop++;s.poopSt.push(num(r.st)||3);if(r.blood||r.mucus||r.foreign)s.flags=true;}
+    else if(r.type==='vomit')s.vomit++;
+    else if(r.type==='weight')s.weight=num(r.kg);
+    else if(r.type==='med')s.med++;
+    if(r.memo)s.memo++;
+  });
+  s.total=s.mix+s.bowl+(S.settings.inclFood?s.food:0);
+  const w=weightOn(c,d);s.w=w;s.perKg=w>0?s.total/w:null;
+  s.target=w>0&&num(c.target)>0?w*num(c.target):null;
+  return s;
+}
+function alerts(c){
+  const out=[], now=new Date(), rs=S.recs.filter(r=>r.cat===c.id);
+  const last=t=>rs.filter(r=>r.type===t).map(r=>r.t).sort().pop();
+  const lp=last('pee');
+  if(lp){const h=(now-parseT(lp))/36e5;if(h>=num(S.settings.peeH))out.push('おしっこの記録が '+Math.floor(h)+' 時間ありません');}
+  const lo=last('poop');
+  if(lo){const dd=(now-parseT(lo))/864e5;if(dd>=num(S.settings.poopD))out.push('うんちの記録が '+Math.floor(dd)+' 日ありません');}
+  const y=addDays(today(),-1), sy=stats(c,y);
+  if(sy.hasWater){
+    const prev=[];for(let i=2;i<=8;i++){const s=stats(c,addDays(today(),-i));if(s.hasWater)prev.push(s.total);}
+    if(prev.length>=3){const avg=prev.reduce((a,b)=>a+b,0)/prev.length;
+      if(avg>0&&sy.total>=avg*1.5)out.push('昨日の水分量（'+Math.round(sy.total)+'ml）が直近平均（'+Math.round(avg)+'ml）より大きく増えています');
+      if(avg>0&&sy.total<=avg*0.5)out.push('昨日の水分量（'+Math.round(sy.total)+'ml）が直近平均（'+Math.round(avg)+'ml）より大きく減っています');}
+  }
+  const in24=r=>(now-parseT(r.t))<=864e5&&parseT(r.t)<=now;
+  const vom=rs.filter(r=>r.type==='vomit'&&in24(r)).length;if(vom>=2)out.push('24時間以内に嘔吐が '+vom+' 回あります');
+  if(rs.some(r=>in24(r)&&r.type==='poop'&&num(r.st)===5))out.push('24時間以内に水様便の記録があります');
+  if(rs.some(r=>(now-parseT(r.t))<=2*864e5&&((r.type==='pee'&&(r.blood||r.color==='赤・ピンク'))||(r.type==='poop'&&(r.blood||r.color==='赤っぽい'||r.color==='黒っぽい')))))out.push('48時間以内に血が混じった・色の異常の記録があります');
+  const ws=rs.filter(r=>r.type==='weight').sort((a,b)=>a.t<b.t?-1:1);
+  if(ws.length>=2){const L=ws[ws.length-1];const lim=addDays(L.t.slice(0,10),-30);const base=ws.find(r=>r.t.slice(0,10)>=lim&&r!==L);
+    if(base&&num(base.kg)>0){const ch=(num(L.kg)-num(base.kg))/num(base.kg);if(Math.abs(ch)>=0.05)out.push('体重が30日以内に '+(ch>0?'+':'')+r1(ch*100)+'% 変化しています（'+base.kg+'→'+L.kg+'kg）');}}
+  return out;
+}
+
+/* ========== 描画共通 ========== */
+function go(t){UI.tab=t;window.scrollTo(0,0);render();}
+function pickCat(id){UI.cat=id;saveUI();render();}
+function render(){
+  IDX=null;
+  if(!S.cats.find(c=>c.id===UI.cat))UI.cat=S.cats[0]?S.cats[0].id:null;
+  $('catSel').innerHTML=S.cats.length?S.cats.map(c=>'<option value="'+c.id+'"'+(c.id===UI.cat?' selected':'')+'>'+esc(c.name)+'</option>').join(''):'<option>未登録</option>';
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===UI.tab));
+  const m=$('main');
+  if(!S.cats.length&&UI.tab!=='set'){m.innerHTML=welcome();return;}
+  m.innerHTML=({rec:vRec,graph:vGraph,cal:vCal,rep:vRep,set:vSet})[UI.tab]();
+}
+function welcome(){
+  return '<div class="card"><h2>はじめに</h2><p>最初に猫を登録してください。あとから何匹でも追加できます。</p>'+
+  '<div class="f"><label>名前</label><input type="text" id="wName" placeholder="例：ミケ"></div>'+
+  '<div class="f"><label>体重（kg）</label><input type="number" id="wKg" step="0.01" inputmode="decimal" placeholder="例：4.2"></div>'+
+  '<button class="btn pri" onclick="welcomeSave()">登録する</button></div>';
+}
+function welcomeSave(){
+  const n=$('wName').value.trim();if(!n){toast('名前を入れてください');return;}
+  const c={id:uid(),name:n,weight:num($('wKg').value),target:50};
+  S.cats.push(c);UI.cat=c.id;ensureFoods();markMeta();saveUI();commit();
+}
+function ensureFoods(){
+  if(!S.foods.length){S.foods.push({id:uid(),name:'ドライフード',kind:'dry',pct:10},{id:uid(),name:'ウェットフード',kind:'wet',pct:78});markMeta();}
+}
+
+/* ========== 記録タブ ========== */
+function vRec(){
+  const c=cat(), d=UI.day||today(), s=stats(c,d), al=alerts(c);
+  let h='';
+  h+=backupBanner();
+  if(al.length)h+='<div class="alert"><b>⚠ 注意</b><ul>'+al.map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul><div class="sub">記録から機械的に出している目安で、診断ではありません。気になるときは動物病院に相談してください。</div></div>';
+  h+='<div class="daynav"><button class="btn sm" onclick="shiftDay(-1)">◀</button><div class="d">'+fmtDay(d)+(d===today()?'（今日）':'')+'</div><button class="btn sm" onclick="shiftDay(1)">▶</button>'+(d!==today()?'<button class="btn sm" onclick="UI.day=null;render()">今日</button>':'')+'</div>';
+  h+='<div class="card"><div class="row between"><div><div class="sub">水分 合計</div><div class="big">'+Math.round(s.total)+' <span style="font-size:16px">ml</span></div></div>'+
+     '<div style="text-align:right">'+(s.perKg!=null?'<div><b>'+r1(s.perKg)+'</b> ml/kg</div>':'<div class="sub">体重未登録</div>')+(s.target?'<div class="sub">目安 約'+Math.round(s.target)+'ml</div>':'')+'</div></div>'+
+     '<div class="kv"><div><span><i class="dot" style="background:var(--mix)"></i>食事に混ぜた水</span><b>'+Math.round(s.mix)+' ml</b></div>'+
+     '<div><span><i class="dot" style="background:var(--bowl)"></i>器から飲んだ水</span><b>'+Math.round(s.bowl)+' ml</b></div>'+
+     '<div><span><i class="dot" style="background:var(--food)"></i>フードの水分'+(S.settings.inclFood?'':'(合計外)')+'</span><b>'+Math.round(s.food)+' ml</b></div>'+
+     '<div><span>ドライ食べた量</span><b>'+r1(s.dry)+' g</b></div><div><span>ウェット食べた量</span><b>'+r1(s.wet)+' g</b></div>'+
+     '<div><span>体重</span><b>'+(s.weight!=null?s.weight+' kg':(s.w?'<span class="sub">'+s.w+' kg</span>':'—'))+'</b></div>'+
+     '<div><span>小</span><b>'+s.pee+' 回</b></div><div><span>大</span><b>'+s.poop+' 回</b></div><div><span>嘔吐</span><b>'+s.vomit+' 回</b></div></div></div>';
+  h+='<div class="card"><h2>記録する</h2><div class="grid">'+
+     '<div class="qb hot" onclick="quick(\'pee\')"><span class="i">🟡</span>小 1回<br><span class="sub">ワンタップ</span></div>'+
+     '<div class="qb hot" onclick="quick(\'poop\')"><span class="i">🟤</span>大 普通<br><span class="sub">ワンタップ</span></div>'+
+     '<div class="qb" onclick="openForm(\'bowl\')"><span class="i">💧</span>器の水</div>'+
+     '<div class="qb" onclick="openForm(\'mix\')"><span class="i">🥣</span>食事に混ぜた水</div>'+
+     '<div class="qb" onclick="openForm(\'food\')"><span class="i">🍚</span>食事</div>'+
+     '<div class="qb" onclick="openForm(\'pee\')"><span class="i">🟡</span>小（詳細）</div>'+
+     '<div class="qb" onclick="openForm(\'poop\')"><span class="i">🟤</span>大（詳細）</div>'+
+     '<div class="qb" onclick="openForm(\'vomit\')"><span class="i">🤮</span>嘔吐</div>'+
+     '<div class="qb" onclick="openForm(\'weight\')"><span class="i">⚖️</span>体重</div>'+
+     '<div class="qb" onclick="openForm(\'med\')"><span class="i">💊</span>投薬・通院</div>'+
+     '<div class="qb" onclick="openForm(\'memo\')"><span class="i">📝</span>メモ</div>'+
+     '</div></div>';
+  const rs=dayRecs(c.id,d);
+  h+='<div class="card"><h2>'+fmtDay(d)+'の記録</h2>'+(rs.length?'<div class="list">'+rs.map(itemHTML).join('')+'</div>':'<div class="empty">まだ記録がありません</div>')+'</div>';
+  return h;
+}
+function lastBackup(){try{return localStorage.getItem(BK_KEY);}catch(e){return null;}}
+function backupBanner(){
+  if(!S.recs.length||COL)return '';
+  const lb=lastBackup();
+  const days=lb?Math.floor((parseD(today())-parseD(lb))/864e5):null;
+  if(days!==null&&days<BK_DAYS)return '';
+  return '<div class="alert" style="border-color:var(--acc);background:var(--acc2)"><b style="color:var(--acc)">💾 バックアップのお願い</b><div>'+(lb?'前回のバックアップから '+days+' 日たっています。':'まだ一度もバックアップしていません。')+'記録はこの端末のブラウザ内にだけ保存されているため、ブラウザのデータ消去や機種変更で消えてしまいます。</div><div style="margin-top:6px"><button class="btn sm pri" onclick="exportJson()">今すぐバックアップ</button></div></div>';
+}
+function shiftDay(n){UI.day=addDays(UI.day||today(),n);if(UI.day===today())UI.day=null;render();}
+function itemHTML(r){
+  return '<div class="it" onclick="openForm(\''+r.type+'\',\''+r.id+'\')"><div class="tm">'+r.t.slice(11,16)+'</div><div class="bd"><div>'+T[r.type].ic+' <b>'+T[r.type].l+'</b> '+esc(recLine(r))+recTags(r)+'</div>'+(r.memo?'<div class="memo">'+esc(r.memo)+'</div>':'')+'</div></div>';
+}
+function lbl(arr,v){const x=arr.find(a=>String(a[0])===String(v));return x?x[1]:'';}
+function recLine(r){
+  switch(r.type){
+    case 'mix':return num(r.ml)+' ml';
+    case 'bowl':return bowlMl(r)+' ml（入れた'+num(r.put)+' − 残り'+num(r.left)+(num(r.evap)?' − 蒸発'+num(r.evap):'')+'）';
+    case 'food':return (r.fname||'')+' '+r1(eaten(r))+' g 食べた（水分 約'+Math.round(moist(r))+' ml）';
+    case 'pee':return '量:'+lbl(PEE_SIZE,r.size)+(r.color?' 色:'+r.color:'');
+    case 'poop':return lbl(POOP_ST,r.st)+' 量:'+lbl(SIZE,r.size)+(r.color?' 色:'+r.color:'');
+    case 'vomit':return r.kind||'';
+    case 'weight':return num(r.kg)+' kg';
+    case 'med':return (r.kind||'')+(r.what?'：'+r.what:'');
+    default:return '';
+  }
+}
+function recTags(r){
+  let t='';
+  if(r.blood)t+='<span class="tag">血</span>';if(r.mucus)t+='<span class="tag">粘液</span>';if(r.foreign)t+='<span class="tag">異物</span>';if(r.outside)t+='<span class="tag">トイレ外</span>';
+  return t;
+}
+function quick(type){
+  const c=cat();const t=UI.day?UI.day+'T12:00':nowT();
+  const r=type==='pee'?{id:uid(),cat:c.id,t,type,size:2,color:'普通'}:{id:uid(),cat:c.id,t,type,st:3,size:2,color:'普通'};
+  S.recs.push(r);markRec(r);commit();
+  toast(T[type].l+'を記録しました','詳細を編集',()=>openForm(type,r.id));
+}
+
+/* ========== 入力フォーム ========== */
+let FORM=null;
+function seg(name,opts,val){return '<div class="seg" data-name="'+name+'">'+opts.map(o=>'<button type="button" class="'+(String(o[0])===String(val)?'on':'')+'" data-v="'+esc(o[0])+'" onclick="segPick(this)">'+esc(o[1])+'</button>').join('')+'</div>';}
+function segPick(b){const on=b.classList.contains('on');b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));if(!on||b.parentNode.dataset.req)b.classList.add('on');formCalc();}
+function segVal(n){const b=document.querySelector('.seg[data-name="'+n+'"] button.on');return b?b.dataset.v:'';}
+function chk(n,l,v){return '<label><input type="checkbox" id="k_'+n+'"'+(v?' checked':'')+'>'+l+'</label>';}
+function numF(id,label,v,step,unit){return '<div class="f"><label>'+label+(unit?'（'+unit+'）':'')+'</label><input type="number" id="'+id+'" inputmode="decimal" step="'+(step||1)+'" value="'+(v===undefined||v===null||v===''?'':esc(v))+'" oninput="formCalc()"></div>';}
+function lastOf(type){const c=cat();return S.recs.filter(r=>r.cat===c.id&&r.type===type).sort((a,b)=>a.t<b.t?-1:1).pop();}
+function openForm(type,id){
+  const c=cat();let r=id?S.recs.find(x=>x.id===id):null;
+  const isNew=!r;
+  if(!r){
+    const L=lastOf(type)||{};
+    r={type,cat:c.id,t:UI.day?UI.day+'T'+nowT().slice(11):nowT()};
+    if(type==='bowl'){r.put=L.put;r.evap=L.evap;}
+    if(type==='mix')r.ml=L.ml;
+    if(type==='food'){r.foodId=L.foodId;}
+    if(type==='pee'){r.size=2;r.color='普通';}
+    if(type==='poop'){r.st=3;r.size=2;r.color='普通';}
+    if(type==='med')r.kind='投薬';
+    if(type==='weight')r.kg=L.kg||c.weight||'';
+  }
+  FORM={type,id,isNew};
+  let b='<h3>'+T[type].ic+' '+T[type].l+(isNew?'':'（編集）')+'</h3>';
+  b+='<div class="f"><label>日時</label><input type="datetime-local" id="f_t" value="'+r.t+'"></div>';
+  if(type==='mix')b+=numF('f_ml','水の量',r.ml,1,'ml');
+  if(type==='bowl'){
+    b+='<div class="three">'+numF('f_put','入れた量',r.put,1,'ml')+numF('f_left','残った量',r.left,1,'ml')+numF('f_evap','蒸発分',r.evap,1,'ml')+'</div>';
+    b+='<div class="sub" style="margin:-6px 0 8px">蒸発分：猫が飲めない場所に同じ器を置いて減った量。不明なら空欄でOK。</div><div class="calc" id="calc"></div>';
+  }
+  if(type==='food'){
+    ensureFoods();
+    const fid=r.foodId&&foodOf(r.foodId)?r.foodId:S.foods[0].id;
+    b+='<div class="f"><label>フード</label><select id="f_food" onchange="formCalc()">'+
+      [['dry','ドライ'],['wet','ウェット']].map(k=>'<optgroup label="'+k[1]+'">'+S.foods.filter(f=>f.kind===k[0]).map(f=>'<option value="'+f.id+'"'+(f.id===fid?' selected':'')+'>'+esc(f.name)+'（水分'+f.pct+'%）</option>').join('')+'</optgroup>').join('')+
+      '</select><div class="sub">フードの種類と水分率は「設定」で追加・変更できます。</div></div>';
+    b+='<div class="two">'+numF('f_given','与えた量',r.given,0.1,'g')+numF('f_left','残した量',r.left,0.1,'g')+'</div><div class="calc" id="calc"></div>';
+  }
+  if(type==='pee'){
+    b+='<div class="f"><label>量（砂の塊の大きさ）</label>'+seg('size',PEE_SIZE,r.size)+'</div>';
+    b+='<div class="f"><label>色</label>'+seg('color',PEE_COL,r.color)+'</div>';
+    b+='<div class="f"><label>気になる点</label><div class="chk">'+chk('blood','血尿',r.blood)+chk('outside','トイレ以外',r.outside)+'</div></div>';
+  }
+  if(type==='poop'){
+    b+='<div class="f"><label>状態</label>'+seg('st',POOP_ST,r.st)+'</div>';
+    b+='<div class="f"><label>量</label>'+seg('size',SIZE,r.size)+'</div>';
+    b+='<div class="f"><label>色</label>'+seg('color',POOP_COL,r.color)+'</div>';
+    b+='<div class="f"><label>気になる点</label><div class="chk">'+chk('blood','血',r.blood)+chk('mucus','粘液',r.mucus)+chk('foreign','異物',r.foreign)+chk('outside','トイレ以外',r.outside)+'</div></div>';
+  }
+  if(type==='vomit')b+='<div class="f"><label>内容</label>'+seg('kind',VOMIT,r.kind)+'</div>';
+  if(type==='weight')b+=numF('f_kg','体重',r.kg,0.01,'kg');
+  if(type==='med'){b+='<div class="f"><label>種類</label>'+seg('kind',MED,r.kind)+'</div><div class="f"><label>内容（薬の名前・病院名など）</label><input type="text" id="f_what" value="'+esc(r.what||'')+'"></div>';}
+  b+='<div class="f"><label>メモ（自由に入力）</label><textarea id="f_memo" placeholder="様子や気づいたことなど">'+esc(r.memo||'')+'</textarea></div>';
+  b+='<div class="row"><button class="btn pri" style="flex:1" onclick="formSave()">保存</button><button class="btn" onclick="closeModal()">キャンセル</button>'+(isNew?'':'<button class="btn warn" onclick="formDel()">削除</button>')+'</div>';
+  showModal(b);formCalc();
+}
+function formCalc(){
+  const el=$('calc');if(!el||!FORM)return;
+  if(FORM.type==='bowl'){el.textContent='飲んだ量：'+bowlMl({put:$('f_put').value,left:$('f_left').value,evap:$('f_evap').value})+' ml';}
+  if(FORM.type==='food'){const f=foodOf($('f_food').value)||{pct:0};const x={given:$('f_given').value,left:$('f_left').value,pct:f.pct};el.textContent='食べた量：'+r1(eaten(x))+' g ／ フードの水分：約'+Math.round(moist(x))+' ml';}
+}
+function formSave(){
+  const c=cat(), ty=FORM.type;
+  const t=$('f_t').value;if(!t){toast('日時を入れてください');return;}
+  const r={id:FORM.id||uid(),cat:c.id,t:t.slice(0,16),type:ty};
+  const memo=$('f_memo').value.trim();if(memo)r.memo=memo;
+  const v=id=>$(id).value;
+  if(ty==='mix'){if(v('f_ml')==='')return toast('量を入れてください');r.ml=num(v('f_ml'));}
+  if(ty==='bowl'){if(v('f_put')===''||v('f_left')==='')return toast('入れた量と残った量を入れてください');r.put=num(v('f_put'));r.left=num(v('f_left'));if(v('f_evap')!=='')r.evap=num(v('f_evap'));}
+  if(ty==='food'){const f=foodOf(v('f_food'));if(!f)return toast('フードを選んでください');if(v('f_given')==='')return toast('与えた量を入れてください');
+    r.foodId=f.id;r.fname=f.name;r.kind=f.kind;r.pct=num(f.pct);r.given=num(v('f_given'));r.left=num(v('f_left'));}
+  if(ty==='pee'){r.size=num(segVal('size'))||2;r.color=segVal('color');['blood','outside'].forEach(k=>{if($('k_'+k).checked)r[k]=true;});}
+  if(ty==='poop'){r.st=num(segVal('st'))||3;r.size=num(segVal('size'))||2;r.color=segVal('color');['blood','mucus','foreign','outside'].forEach(k=>{if($('k_'+k).checked)r[k]=true;});}
+  if(ty==='vomit')r.kind=segVal('kind');
+  if(ty==='weight'){if(v('f_kg')==='')return toast('体重を入れてください');r.kg=num(v('f_kg'));}
+  if(ty==='med'){r.kind=segVal('kind');r.what=v('f_what').trim();}
+  if(ty==='memo'&&!memo)return toast('メモを入れてください');
+  if(FORM.id){const i=S.recs.findIndex(x=>x.id===FORM.id);if(i>=0){markRec(S.recs[i]);S.recs[i]=r;}}
+  else S.recs.push(r);
+  markRec(r);closeModal();commit();toast('保存しました');
+}
+function formDel(){
+  const r=S.recs.find(x=>x.id===FORM.id);if(!r)return;
+  askConfirm('この記録を削除しますか？',()=>{S.recs=S.recs.filter(x=>x!==r);markRec(r);closeModal();commit();toast('削除しました');});
+}
+function showModal(html){$('modal').innerHTML='<div class="ov" onclick="if(event.target===this)closeModal()"><div class="md">'+html+'</div></div>';}
+function closeModal(){$('modal').innerHTML='';FORM=null;}
+function askConfirm(msg,ok){
+  const prev=$('modal').innerHTML;
+  const box=document.createElement('div');box.className='ov';box.style.zIndex=25;box.style.alignItems='center';
+  box.innerHTML='<div class="md" style="border-radius:16px;max-width:360px;margin:16px"><p>'+esc(msg)+'</p><div class="row"><button class="btn warn" style="flex:1" id="cOk">はい</button><button class="btn" style="flex:1" id="cNo">いいえ</button></div></div>';
+  document.body.appendChild(box);
+  box.querySelector('#cNo').onclick=()=>box.remove();
+  box.querySelector('#cOk').onclick=()=>{box.remove();ok();};
+}
+
+/* ========== グラフ ========== */
+function rangeDays(n,end){const a=[];for(let i=n-1;i>=0;i--)a.push(addDays(end,-i));return a;}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x||1)));const f=x/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p;}
+function shortD(d){const x=parseD(d);return (x.getMonth()+1)+'/'+x.getDate();}
+function chart(days,series,line,target,opt){
+  opt=opt||{};const W=360,H=210,L=36,R=8,Tp=10,B=26,n=days.length,pw=W-L-R,ph=H-Tp-B;
+  const sums=days.map((_,i)=>series.reduce((a,s)=>a+(s.v[i]||0),0));
+  let mx=Math.max(1,...sums,...(line?line.v.filter(v=>v!=null):[]),...(target?target.filter(v=>v!=null):[]));
+  const st=niceStep(mx/4);mx=Math.ceil(mx*1.05/st)*st;
+  const y=v=>Tp+ph-(v/mx)*ph, bw=pw/n;
+  let g='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img">';
+  for(let v=0;v<=mx+1e-9;v+=st){g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" style="stroke:var(--line)" stroke-width="1"/><text x="'+(L-4)+'" y="'+(y(v)+3)+'" text-anchor="end">'+(Math.round(v*10)/10)+'</text>';}
+  days.forEach((d,i)=>{let acc=0;const x=L+i*bw+bw*0.15,w=Math.max(1,bw*0.7);
+    series.forEach(s=>{const v=s.v[i]||0;if(v>0){g+='<rect x="'+x.toFixed(1)+'" y="'+y(acc+v).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+(y(acc)-y(acc+v)).toFixed(1)+'" style="fill:'+s.c+'"/>';}acc+=v;});
+  });
+  if(target){let p='';target.forEach((v,i)=>{if(v!=null)p+=(p?' L':'M')+(L+i*bw+bw/2).toFixed(1)+' '+y(v).toFixed(1);});if(p)g+='<path d="'+p+'" fill="none" style="stroke:var(--ok)" stroke-width="1.5" stroke-dasharray="4 3"/>';}
+  if(line){let p='',dots='';line.v.forEach((v,i)=>{if(v==null)return;const cx=(L+i*bw+bw/2).toFixed(1),cy=y(v).toFixed(1);p+=(p?' L':'M')+cx+' '+cy;if(n<=31)dots+='<circle cx="'+cx+'" cy="'+cy+'" r="2.5" style="fill:'+line.c+'"/>';});g+='<path d="'+p+'" fill="none" style="stroke:'+line.c+'" stroke-width="2"/>'+dots;}
+  const every=n<=7?1:n<=31?5:15;
+  days.forEach((d,i)=>{if((n-1-i)%every===0)g+='<text x="'+(L+i*bw+bw/2)+'" y="'+(H-8)+'" text-anchor="middle">'+shortD(d)+'</text>';});
+  if(opt.unit)g+='<text x="2" y="9">'+opt.unit+'</text>';
+  return g+'</svg>';
+}
+function vGraph(){
+  const c=cat(),n=UI.gDays,days=rangeDays(n,today()),ss=days.map(d=>stats(c,d));
+  let h='<div class="seg" data-req="1" style="margin-bottom:10px">'+[[7,'7日'],[30,'30日'],[90,'90日']].map(o=>'<button class="'+(n===o[0]?'on':'')+'" onclick="UI.gDays='+o[0]+';saveUI();render()">'+o[1]+'</button>').join('')+'</div>';
+  const ser=[{c:'var(--mix)',v:ss.map(s=>s.mix)},{c:'var(--bowl)',v:ss.map(s=>s.bowl)}];
+  if(S.settings.inclFood)ser.push({c:'var(--food)',v:ss.map(s=>s.food)});
+  const wd=ss.filter(s=>s.hasWater);
+  const avg=wd.length?wd.reduce((a,s)=>a+s.total,0)/wd.length:0;
+  h+='<div class="card"><h2>水分摂取量</h2>'+chart(days,ser,{c:'var(--total)',v:ss.map(s=>s.hasWater?s.total:null)},ss.map(s=>s.target),{unit:'ml'})+
+    '<div class="legend"><span><i class="dot" style="background:var(--mix)"></i>食事に混ぜた水</span><span><i class="dot" style="background:var(--bowl)"></i>器から飲んだ水</span>'+(S.settings.inclFood?'<span><i class="dot" style="background:var(--food)"></i>フードの水分</span>':'')+'<span>━ 合計</span><span style="color:var(--ok)">┅ 目安</span></div>'+
+    '<div class="sub" style="margin-top:6px">記録のある日の平均：<b>'+Math.round(avg)+' ml/日</b>（'+wd.length+'日分）</div></div>';
+  h+='<div class="card"><h2>日ごとの内訳</h2><div class="scroll"><table><tr><th>日付</th><th>混ぜた水</th><th>器の水</th><th>フード</th><th>合計</th><th>ml/kg</th></tr>'+
+    days.slice().reverse().map((d,i)=>{const s=ss[n-1-i];return s.hasWater?'<tr><td>'+shortD(d)+'('+WD[parseD(d).getDay()]+')</td><td>'+Math.round(s.mix)+'</td><td>'+Math.round(s.bowl)+'</td><td>'+Math.round(s.food)+'</td><td><b>'+Math.round(s.total)+'</b></td><td>'+(s.perKg!=null?r1(s.perKg):'—')+'</td></tr>':'';}).join('')+'</table></div></div>';
+  h+='<div class="card"><h2>食事量（食べた量）</h2>'+chart(days,[{c:'var(--dry)',v:ss.map(s=>s.dry)},{c:'var(--wet)',v:ss.map(s=>s.wet)}],null,null,{unit:'g'})+
+    '<div class="legend"><span><i class="dot" style="background:var(--dry)"></i>ドライ</span><span><i class="dot" style="background:var(--wet)"></i>ウェット</span></div></div>';
+  h+='<div class="card"><h2>排泄回数</h2>'+chart(days,[{c:'#d9b43a',v:ss.map(s=>s.pee)},{c:'#8a5a3b',v:ss.map(s=>s.poop)}],null,null,{unit:'回'})+
+    '<div class="legend"><span><i class="dot" style="background:#d9b43a"></i>小</span><span><i class="dot" style="background:#8a5a3b"></i>大</span>（積み上げ）</div></div>';
+  const wv=ss.map(s=>s.weight);
+  h+='<div class="card"><h2>体重</h2>'+(wv.some(v=>v!=null)?wchart(days,wv):'<div class="empty">この期間の体重記録がありません</div>')+'</div>';
+  return h;
+}
+function wchart(days,vals){
+  const W=360,H=170,L=36,R=8,Tp=10,B=26,n=days.length,pw=W-L-R,ph=H-Tp-B;
+  const vs=vals.filter(v=>v!=null);let lo=Math.min(...vs),hi=Math.max(...vs);if(hi-lo<0.4){const m=(hi+lo)/2;lo=m-0.2;hi=m+0.2;}
+  const pd=(hi-lo)*0.15;lo-=pd;hi+=pd;const y=v=>Tp+ph-(v-lo)/(hi-lo)*ph,bw=pw/n;
+  let g='<svg viewBox="0 0 '+W+' '+H+'" width="100%">';
+  for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" style="stroke:var(--line)"/><text x="'+(L-4)+'" y="'+(y(v)+3)+'" text-anchor="end">'+v.toFixed(2)+'</text>';}
+  let p='',dots='';vals.forEach((v,i)=>{if(v==null)return;const cx=(L+i*bw+bw/2).toFixed(1),cy=y(v).toFixed(1);p+=(p?' L':'M')+cx+' '+cy;dots+='<circle cx="'+cx+'" cy="'+cy+'" r="3" style="fill:var(--acc)"/>';});
+  g+='<path d="'+p+'" fill="none" style="stroke:var(--acc)" stroke-width="2"/>'+dots;
+  const every=n<=7?1:n<=31?5:15;days.forEach((d,i)=>{if((n-1-i)%every===0)g+='<text x="'+(L+i*bw+bw/2)+'" y="'+(H-8)+'" text-anchor="middle">'+shortD(d)+'</text>';});
+  return g+'<text x="2" y="9">kg</text></svg>';
+}
+
+/* ========== カレンダー ========== */
+function vCal(){
+  const c=cat();const ym=UI.calYM||today().slice(0,7);const [Y,M]=ym.split('-').map(Number);
+  const first=new Date(Y,M-1,1),start=addDays(dstr(first),-first.getDay());
+  let h='<div class="daynav"><button class="btn sm" onclick="shiftMonth(-1)">◀</button><div class="d">'+Y+'年'+M+'月</div><button class="btn sm" onclick="shiftMonth(1)">▶</button>'+(ym!==today().slice(0,7)?'<button class="btn sm" onclick="UI.calYM=null;render()">今月</button>':'')+'</div>';
+  h+='<div class="cal">'+[...WD].map((w,i)=>'<div class="h '+(i===0?'sun':i===6?'sat':'')+'">'+w+'</div>').join('');
+  for(let i=0;i<42;i++){
+    const d=addDays(start,i);if(i===35&&d.slice(0,7)!==ym)break;
+    const s=stats(c,d);const out=d.slice(0,7)!==ym;
+    let inner='<div class="n '+(i%7===0?'sun':i%7===6?'sat':'')+'">'+parseD(d).getDate()+'</div>';
+    if(s.hasWater)inner+='<div class="w">💧'+Math.round(s.total)+'</div>';
+    if(s.pee||s.poop)inner+='<div>小'+s.pee+' 大'+s.poop+poopDot(s.poopSt)+'</div>';
+    let ic='';if(s.flags)ic+='⚠️';if(s.vomit)ic+='🤮';if(s.med)ic+='💊';if(s.weight!=null)ic+='⚖️';if(s.memo)ic+='📝';
+    if(ic)inner+='<div class="ic">'+ic+'</div>';
+    h+='<div class="c'+(out?' out':'')+(d===today()?' today':'')+'" onclick="calPick(\''+d+'\')">'+inner+'</div>';
+  }
+  h+='</div><div class="legend" style="margin-top:10px"><span>💧水分合計ml</span><span>小/大＝回数</span><span><i class="dot" style="background:#3c9a5f"></i>便 普通</span><span><i class="dot" style="background:#d39b2a"></i>やや硬い/軟らかい</span><span><i class="dot" style="background:#c0392b"></i>コロコロ/水様</span><span>⚠️血・異物など</span><span>🤮嘔吐</span><span>💊投薬・通院</span><span>⚖️体重</span><span>📝メモ</span></div>';
+  h+='<div class="sub" style="margin-top:8px">日付をタップすると、その日の記録画面に移動します。</div>';
+  return h;
+}
+function poopDot(a){if(!a.length)return '';const w=Math.max(...a.map(s=>Math.abs(s-3)));const col=w===0?'#3c9a5f':w===1?'#d39b2a':'#c0392b';return ' <i class="dot" style="background:'+col+';width:8px;height:8px"></i>';}
+function shiftMonth(n){const [Y,M]=(UI.calYM||today().slice(0,7)).split('-').map(Number);const d=new Date(Y,M-1+n,1);UI.calYM=d.getFullYear()+'-'+pad(d.getMonth()+1);render();}
+function calPick(d){UI.day=d===today()?null:d;go('rec');}
+
+/* ========== レポート ========== */
+function vRep(){
+  const to=UI.repTo||today(),from=UI.repFrom||addDays(to,-13);
+  let h='<div class="card"><h2>獣医さん向けまとめ</h2><div class="two"><div class="f"><label>開始日</label><input type="date" value="'+from+'" onchange="UI.repFrom=this.value;render()"></div><div class="f"><label>終了日</label><input type="date" value="'+to+'" onchange="UI.repTo=this.value;render()"></div></div>'+
+    '<div class="row" style="flex-wrap:wrap"><button class="btn sm" onclick="copyReport()">📋 テキストをコピー</button><button class="btn sm" onclick="saveReportHtml()">💾 HTMLで保存（印刷・PDF用）</button></div></div>';
+  h+='<div class="card" id="repBody">'+reportHTML(from,to)+'</div>';
+  return h;
+}
+function repData(from,to){
+  const c=cat();if(from>to){const x=from;from=to;to=x;}
+  const days=[];for(let d=from;d<=to;d=addDays(d,1))days.push(d);
+  return {c,from,to,days,ss:days.map(d=>stats(c,d))};
+}
+function reportHTML(from,to){
+  const {c,days,ss}=repData(from,to);
+  const wd=ss.filter(s=>s.hasWater),av=k=>wd.length?wd.reduce((a,s)=>a+s[k],0)/wd.length:0;
+  const pk=wd.filter(s=>s.perKg!=null);
+  const tot=k=>ss.reduce((a,s)=>a+s[k],0);
+  let h='<h2>'+esc(c.name)+'　'+fmtDay(days[0])+'〜'+fmtDay(days[days.length-1])+'（'+days.length+'日間）</h2>';
+  h+='<div class="kv"><div><span>水分 平均/日</span><b>'+Math.round(av('total'))+' ml</b></div><div><span>体重あたり</span><b>'+(pk.length?r1(pk.reduce((a,s)=>a+s.perKg,0)/pk.length):'—')+' ml/kg</b></div><div><span>水分記録日数</span><b>'+wd.length+' 日</b></div>'+
+     '<div><span>小 合計</span><b>'+tot('pee')+' 回</b></div><div><span>大 合計</span><b>'+tot('poop')+' 回</b></div><div><span>嘔吐 合計</span><b>'+tot('vomit')+' 回</b></div></div>';
+  h+='<div class="scroll" style="margin-top:10px"><table><tr><th>日付</th><th>混ぜ</th><th>器</th><th>フード</th><th>合計</th><th>ml/kg</th><th>ドライg</th><th>ウェットg</th><th>小</th><th>大(状態)</th><th>嘔吐</th><th>体重</th></tr>'+
+    days.map((d,i)=>{const s=ss[i];if(!s.n)return '<tr><td>'+shortD(d)+'</td><td colspan="11" style="text-align:center;color:var(--sub)">記録なし</td></tr>';
+      return '<tr><td>'+shortD(d)+'('+WD[parseD(d).getDay()]+')</td><td>'+Math.round(s.mix)+'</td><td>'+Math.round(s.bowl)+'</td><td>'+Math.round(s.food)+'</td><td><b>'+Math.round(s.total)+'</b></td><td>'+(s.perKg!=null?r1(s.perKg):'—')+'</td><td>'+r1(s.dry)+'</td><td>'+r1(s.wet)+'</td><td>'+s.pee+'</td><td>'+s.poop+(s.poopSt.length?'('+s.poopSt.join(',')+')':'')+'</td><td>'+s.vomit+'</td><td>'+(s.weight!=null?s.weight:'')+'</td></tr>';}).join('')+'</table></div>';
+  h+='<div class="sub">大の状態：1=コロコロ 2=やや硬い 3=普通 4=軟らかい 5=水様。水分はml。'+(S.settings.inclFood?'合計にフードの水分を含む。':'合計にフードの水分は含まない。')+'</div>';
+  const notes=[];days.forEach(d=>dayRecs(c.id,d).forEach(r=>{const tg=recTags(r).replace(/<[^>]+>/g,' ').trim();if(r.memo||tg||['vomit','med'].includes(r.type)||(r.type==='poop'&&num(r.st)!==3)||(r.type==='pee'&&r.color&&r.color!=='普通'))notes.push({r,tg});}));
+  h+='<h2 style="margin-top:12px">特記事項・メモ</h2>'+(notes.length?'<div class="list">'+notes.map(o=>'<div class="it" style="cursor:default"><div class="tm" style="width:76px">'+shortD(o.r.t.slice(0,10))+' '+o.r.t.slice(11,16)+'</div><div class="bd">'+T[o.r.type].ic+' <b>'+T[o.r.type].l+'</b> '+esc(recLine(o.r))+(o.tg?' ['+esc(o.tg)+']':'')+(o.r.memo?'<div class="memo">'+esc(o.r.memo)+'</div>':'')+'</div></div>').join('')+'</div>':'<div class="empty">なし</div>');
+  return h;
+}
+function reportText(){
+  const to=UI.repTo||today(),from=UI.repFrom||addDays(to,-13);const {c,days,ss}=repData(from,to);
+  let t='【'+c.name+'】'+fmtDay(days[0])+'〜'+fmtDay(days[days.length-1])+'\n';
+  days.forEach((d,i)=>{const s=ss[i];if(!s.n)return;
+    t+=fmtDay(d)+'  水分'+Math.round(s.total)+'ml（混ぜ'+Math.round(s.mix)+'/器'+Math.round(s.bowl)+'/フード'+Math.round(s.food)+'）'+(s.perKg!=null?' '+r1(s.perKg)+'ml/kg':'')+
+      '  食事 ドライ'+r1(s.dry)+'g ウェット'+r1(s.wet)+'g  小'+s.pee+' 大'+s.poop+(s.poopSt.length?'('+s.poopSt.join(',')+')':'')+(s.vomit?' 嘔吐'+s.vomit:'')+(s.weight!=null?' 体重'+s.weight+'kg':'')+'\n';
+    dayRecs(c.id,d).forEach(r=>{const tg=recTags(r).replace(/<[^>]+>/g,' ').trim();if(r.memo||tg||r.type==='vomit'||r.type==='med')t+='   ・'+r.t.slice(11,16)+' '+T[r.type].l+' '+recLine(r)+(tg?' ['+tg+']':'')+(r.memo?' 「'+r.memo.replace(/\n/g,' ')+'」':'')+'\n';});
+  });
+  return t+'※大の状態 1=コロコロ 2=やや硬い 3=普通 4=軟らかい 5=水様\n';
+}
+async function copyReport(){
+  const t=reportText();
+  try{await navigator.clipboard.writeText(t);toast('コピーしました');}
+  catch(e){showModal('<h3>テキスト</h3><div class="sub">長押しで全選択してコピーしてください。</div><textarea style="width:100%;height:50vh" readonly>'+esc(t)+'</textarea><button class="btn" onclick="closeModal()">閉じる</button>');}
+}
+function saveReportHtml(){
+  const to=UI.repTo||today(),from=UI.repFrom||addDays(to,-13);
+  const css='body{font-family:sans-serif;font-size:13px;color:#222;margin:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:3px 5px;text-align:right}th:first-child,td:first-child{text-align:left}.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.kv div{border:1px solid #ddd;padding:4px 8px}.kv span{display:block;font-size:11px;color:#666}.sub{color:#666;font-size:12px}.memo{color:#555;white-space:pre-wrap}.it{display:flex;gap:10px;border-top:1px solid #eee;padding:4px 0}.tag{color:#c0392b;font-size:11px;margin-left:4px}';
+  const html='<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>レポート</title><style>'+css+'</style></head><body>'+reportHTML(from,to)+'</body></html>';
+  saveFile('neko-report-'+from+'_'+to+'.html',html,'text/html');
+}
+
+/* ========== 設定 ========== */
+function vSet(){
+  let h='<div class="card"><div class="row between"><h2 style="margin:0">猫</h2><button class="btn sm pri" onclick="editCat()">＋ 追加</button></div>'+
+    (S.cats.length?S.cats.map(c=>'<div class="setitem"><div class="grow"><b>'+esc(c.name)+'</b><div class="sub">基準体重 '+(c.weight||'—')+' kg ／ 水分の目安 '+(c.target||'—')+' ml/kg/日</div></div><button class="btn sm" onclick="editCat(\''+c.id+'\')">編集</button></div>').join(''):'<div class="empty">未登録</div>')+
+    '<div class="sub">体重を「記録」で入れると、そちらが優先して計算に使われます。</div></div>';
+  h+='<div class="card"><div class="row between"><h2 style="margin:0">フード</h2><button class="btn sm pri" onclick="editFood()">＋ 追加</button></div>'+
+    S.foods.map(f=>'<div class="setitem"><div class="grow"><b>'+esc(f.name)+'</b><div class="sub">'+(f.kind==='dry'?'ドライ':'ウェット')+' ／ 水分 '+f.pct+'%</div></div><button class="btn sm" onclick="editFood(\''+f.id+'\')">編集</button></div>').join('')+
+    '<div class="sub">水分率はパッケージの成分表示の「水分」を入れてください（目安：ドライ約10%、ウェット約75〜80%）。</div></div>';
+  h+='<div class="card"><h2>計算と注意表示</h2>'+
+    '<div class="f chk"><label><input type="checkbox"'+(S.settings.inclFood?' checked':'')+' onchange="setSet(\'inclFood\',this.checked)">フード自体の水分を合計に含める</label></div>'+
+    '<div class="two"><div class="f"><label>おしっこが無い時間（時間）</label><input type="number" value="'+S.settings.peeH+'" onchange="setSet(\'peeH\',num(this.value)||24)"></div><div class="f"><label>うんちが無い日数（日）</label><input type="number" value="'+S.settings.poopD+'" onchange="setSet(\'poopD\',num(this.value)||3)"></div></div>'+
+    '<div class="sub">この時間・日数を超えると「記録」画面に注意を表示します。</div></div>';
+  h+='<div class="card"><h2>データ</h2><div class="sub" style="margin-bottom:8px">保存先：'+esc(syncMsg)+(COL?'':'<br>記録はこの端末・このブラウザの中だけに保存されます。ブラウザのデータを消去したり、別のブラウザや端末で開いたりすると見えなくなります。')+'<br>前回のバックアップ：'+(lastBackup()||'なし')+'</div>'+
+    '<div class="row" style="flex-wrap:wrap"><button class="btn sm" onclick="exportJson()">💾 バックアップを保存</button><button class="btn sm" onclick="$(\'fileIn\').click()">📂 バックアップを読み込む</button><button class="btn sm" onclick="exportCsv()">📊 CSVで保存</button></div>'+
+    '<div class="sub" style="margin-top:8px">読み込みは今のデータに追加（同じ記録は上書き）します。機種変更前や定期的なバックアップをおすすめします。</div></div>';
+  h+='<div class="sub" style="text-align:center;margin:10px 0">記録数 '+S.recs.length+' 件</div>';
+  return h;
+}
+function setSet(k,v){S.settings[k]=v;markMeta();commit();}
+function editCat(id){
+  const c=id?S.cats.find(x=>x.id===id):{name:'',weight:'',target:50};
+  showModal('<h3>'+(id?'猫の編集':'猫の追加')+'</h3><div class="f"><label>名前</label><input type="text" id="c_n" value="'+esc(c.name)+'"></div>'+
+    '<div class="two"><div class="f"><label>基準体重（kg）</label><input type="number" id="c_w" step="0.01" inputmode="decimal" value="'+esc(c.weight)+'"></div><div class="f"><label>水分の目安（ml/kg/日）</label><input type="number" id="c_t" inputmode="decimal" value="'+esc(c.target)+'"></div></div>'+
+    '<div class="sub" style="margin-bottom:12px">目安は一般的によく言われる約50ml/kg/日を初期値にしています。かかりつけの先生の指示があればその値に。</div>'+
+    '<div class="row"><button class="btn pri" style="flex:1" onclick="saveCat(\''+(id||'')+'\')">保存</button><button class="btn" onclick="closeModal()">キャンセル</button>'+(id?'<button class="btn warn" onclick="delCat(\''+id+'\')">削除</button>':'')+'</div>');
+}
+function saveCat(id){
+  const n=$('c_n').value.trim();if(!n)return toast('名前を入れてください');
+  const v={name:n,weight:num($('c_w').value),target:num($('c_t').value)};
+  if(id)Object.assign(S.cats.find(x=>x.id===id),v);else{const c=Object.assign({id:uid()},v);S.cats.push(c);UI.cat=c.id;saveUI();}
+  ensureFoods();markMeta();closeModal();commit();
+}
+function delCat(id){
+  const c=S.cats.find(x=>x.id===id);
+  askConfirm('「'+c.name+'」とその記録をすべて削除しますか？元に戻せません。',()=>{
+    S.recs.filter(r=>r.cat===id).forEach(markRec);S.recs=S.recs.filter(r=>r.cat!==id);S.cats=S.cats.filter(x=>x.id!==id);markMeta();closeModal();commit();toast('削除しました');});
+}
+function editFood(id){
+  const f=id?foodOf(id):{name:'',kind:'dry',pct:10};
+  showModal('<h3>'+(id?'フードの編集':'フードの追加')+'</h3><div class="f"><label>名前</label><input type="text" id="fd_n" value="'+esc(f.name)+'" placeholder="例：○○ 成猫用"></div>'+
+    '<div class="f"><label>種類</label>'+seg('fkind',[['dry','ドライ'],['wet','ウェット']],f.kind).replace('class="seg"','class="seg" data-req="1"')+'</div>'+
+    '<div class="f"><label>水分（%）</label><input type="number" id="fd_p" inputmode="decimal" step="0.1" value="'+esc(f.pct)+'"></div>'+
+    '<div class="sub" style="margin-bottom:12px">変更しても、過去の記録の水分計算はそのときの値のままです。</div>'+
+    '<div class="row"><button class="btn pri" style="flex:1" onclick="saveFood(\''+(id||'')+'\')">保存</button><button class="btn" onclick="closeModal()">キャンセル</button>'+(id&&S.foods.length>1?'<button class="btn warn" onclick="delFood(\''+id+'\')">削除</button>':'')+'</div>');
+}
+function saveFood(id){
+  const n=$('fd_n').value.trim();if(!n)return toast('名前を入れてください');
+  const v={name:n,kind:segVal('fkind')||'dry',pct:num($('fd_p').value)};
+  if(id)Object.assign(foodOf(id),v);else S.foods.push(Object.assign({id:uid()},v));
+  markMeta();closeModal();commit();
+}
+function delFood(id){askConfirm('このフードを一覧から削除しますか？（過去の記録は残ります）',()=>{S.foods=S.foods.filter(f=>f.id!==id);markMeta();closeModal();commit();});}
+
+/* ========== 書き出し・読み込み ========== */
+async function saveFile(name,text,mime){
+  const dl=await cap('downloads');
+  if(dl){try{await dl.save({filename:name,data:text});toast('保存しました');return true;}catch(e){if(e&&e.code==='declined')toast('保存をキャンセルしました');else if(e&&e.code==='rate_limited')toast('少し待ってからもう一度押してください');else fallbackText(name,text);}return false;}
+  const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if(isMobile&&navigator.canShare){
+    try{const file=new File([text],name,{type:mime});
+      if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});toast('保存しました');return true;}
+    }catch(e){if(e&&e.name==='AbortError'){toast('キャンセルしました');return false;}}
+  }
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast('保存しました');return true;}
+  catch(e){fallbackText(name,text);return false;}
+}
+function fallbackText(name,text){showModal('<h3>'+esc(name)+'</h3><div class="sub">ファイル保存ができない環境です。下の内容をコピーして保存してください。</div><textarea style="width:100%;height:50vh" readonly>'+esc(text)+'</textarea><button class="btn" onclick="closeModal()">閉じる</button>');}
+async function exportJson(){const ok=await saveFile('neko-backup-'+today()+'.json',JSON.stringify({app:'nekoMizu',v:1,exported:nowT(),cats:S.cats,foods:S.foods,settings:S.settings,recs:S.recs}),'application/json');if(ok){try{localStorage.setItem(BK_KEY,today());}catch(e){}render();}}
+function exportCsv(){
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const rows=[['猫','日時','種類','水分ml','食べた量g','体重kg','詳細','メモ']];
+  S.recs.slice().sort((a,b)=>a.t<b.t?-1:1).forEach(r=>{const c=S.cats.find(x=>x.id===r.cat);
+    const ml=r.type==='mix'?num(r.ml):r.type==='bowl'?bowlMl(r):r.type==='food'?Math.round(moist(r)):'';
+    rows.push([c?c.name:'',r.t.replace('T',' '),T[r.type].l,ml,r.type==='food'?r1(eaten(r)):'',r.type==='weight'?r.kg:'',recLine(r)+' '+recTags(r).replace(/<[^>]+>/g,' ').trim(),r.memo||'']);});
+  saveFile('neko-records-'+today()+'.csv','﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),'text/csv');
+}
+function importFile(inp){
+  const f=inp.files[0];inp.value='';if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{
+    const j=JSON.parse(rd.result);if(!j||!Array.isArray(j.recs)||!Array.isArray(j.cats))throw 0;
+    const mg=(a,b)=>{const m=new Map(a.map(x=>[x.id,x]));b.forEach(x=>{if(x&&x.id)m.set(x.id,x);});return [...m.values()];};
+    S.cats=mg(S.cats,j.cats);S.foods=mg(S.foods,j.foods||[]);
+    const valid=j.recs.filter(r=>r&&r.id&&r.cat&&typeof r.t==='string'&&T[r.type]);
+    S.recs=mg(S.recs,valid);if(j.settings)S.settings=Object.assign(S.settings,j.settings);
+    markMeta();S.recs.forEach(markRec);commit();toast(valid.length+' 件の記録を読み込みました');
+  }catch(e){toast('読み込めませんでした（このアプリのバックアップファイルか確認してください）');}};
+  rd.readAsText(f);
+}
+
+/* ========== 起動 ========== */
+loadLocal();render();initCloud();
+if(!FRAMED){
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
