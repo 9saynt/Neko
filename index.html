@@ -264,8 +264,11 @@ async function initCloud(){
 function cat(){return S.cats.find(c=>c.id===UI.cat)||S.cats[0]||null;}
 function foodOf(id){return S.foods.find(f=>f.id===id);}
 const bowlMl=r=>Math.max(0,num(r.put)-num(r.left)-num(r.evap));
-const eaten=r=>Math.max(0,num(r.given)-num(r.left));
-const moist=r=>eaten(r)*num(r.pct)/100;
+const fItems=r=>Array.isArray(r.items)?r.items:((r.foodId||r.fname||r.given!=null)?[{foodId:r.foodId,fname:r.fname,kind:r.kind,pct:r.pct,given:r.given,left:r.left}]:[]);
+const eatenI=i=>Math.max(0,num(i.given)-num(i.left));
+const moistI=i=>eatenI(i)*num(i.pct)/100;
+const eaten=r=>fItems(r).reduce((a,i)=>a+eatenI(i),0);
+const moist=r=>fItems(r).reduce((a,i)=>a+moistI(i),0);
 let IDX=null;
 function index(){
   if(IDX)return IDX;
@@ -280,11 +283,11 @@ function weightOn(c,d){
 }
 function stats(c,d){
   const rs=dayRecs(c.id,d);
-  const s={mix:0,bowl:0,food:0,dry:0,wet:0,pee:0,poop:0,vomit:0,poopSt:[],flags:false,weight:null,med:0,memo:0,hasWater:false,n:rs.length};
+  const s={byFood:{},mix:0,bowl:0,food:0,dry:0,wet:0,pee:0,poop:0,vomit:0,poopSt:[],flags:false,weight:null,med:0,memo:0,hasWater:false,n:rs.length};
   rs.forEach(r=>{
     if(r.type==='mix'){s.mix+=num(r.ml);s.hasWater=true;}
     else if(r.type==='bowl'){s.bowl+=bowlMl(r);s.hasWater=true;}
-    else if(r.type==='food'){s.food+=moist(r);if(r.kind==='dry')s.dry+=eaten(r);else s.wet+=eaten(r);if(moist(r)>0)s.hasWater=true;}
+    else if(r.type==='food'){fItems(r).forEach(i=>{const e=eatenI(i),m=moistI(i);s.food+=m;if(i.kind==='dry')s.dry+=e;else s.wet+=e;if(m>0)s.hasWater=true;const k=i.fname||'不明';s.byFood[k]=(s.byFood[k]||0)+e;});}
     else if(r.type==='pee'){s.pee++;if(r.blood||r.color==='赤・ピンク')s.flags=true;}
     else if(r.type==='poop'){s.poop++;if(num(r.st))s.poopSt.push(num(r.st));if(r.blood||r.mucus||r.foreign)s.flags=true;}
     else if(r.type==='vomit')s.vomit++;
@@ -362,7 +365,7 @@ function vRec(){
      '<div><span><i class="dot" style="background:var(--food)"></i>フードの水分'+(S.settings.inclFood?'':'(合計外)')+'</span><b>'+Math.round(s.food)+' ml</b></div>'+
      '<div><span>ドライ食べた量</span><b>'+r1(s.dry)+' g</b></div><div><span>ウェット食べた量</span><b>'+r1(s.wet)+' g</b></div>'+
      '<div><span>体重</span><b>'+(s.weight!=null?s.weight+' kg':(s.w?'<span class="sub">'+s.w+' kg</span>':'—'))+'</b></div>'+
-     '<div><span>小</span><b>'+s.pee+' 回</b></div><div><span>大</span><b>'+s.poop+' 回</b></div><div><span>嘔吐</span><b>'+s.vomit+' 回</b></div></div></div>';
+     '<div><span>小</span><b>'+s.pee+' 回</b></div><div><span>大</span><b>'+s.poop+' 回</b></div><div><span>嘔吐</span><b>'+s.vomit+' 回</b></div></div>'+foodBreak(s.byFood)+'</div>';
   h+='<div class="card"><h2>記録する</h2><div class="grid">'+
      '<div class="qb hot" onclick="openForm(\'pee\')"><span class="i">🟡</span>小</div>'+
      '<div class="qb hot" onclick="openForm(\'poop\')"><span class="i">🟤</span>大</div>'+
@@ -386,6 +389,7 @@ function backupBanner(){
   if(days!==null&&days<BK_DAYS)return '';
   return '<div class="alert" style="border-color:var(--acc);background:var(--acc2)"><b style="color:var(--acc)">💾 バックアップのお願い</b><div>'+(lb?'前回のバックアップから '+days+' 日たっています。':'まだ一度もバックアップしていません。')+'記録はこの端末のブラウザ内にだけ保存されているため、ブラウザのデータ消去や機種変更で消えてしまいます。</div><div style="margin-top:6px"><button class="btn sm pri" onclick="exportJson()">今すぐバックアップ</button></div></div>';
 }
+function foodBreak(m){const k=Object.keys(m);if(!k.length)return '';return '<div class="sub" style="margin-top:8px">フード別に食べた量：'+k.map(n=>esc(n)+' <b>'+r1(m[n])+'g</b>').join('／')+'</div>';}
 function shiftDay(n){UI.day=addDays(UI.day||today(),n);if(UI.day===today())UI.day=null;render();}
 function itemHTML(r){
   return '<div class="it" onclick="openForm(\''+r.type+'\',\''+r.id+'\')"><div class="tm">'+tmOf(r)+'</div><div class="bd"><div>'+T[r.type].ic+' <b>'+T[r.type].l+'</b> '+esc(recLine(r))+recTags(r)+'</div>'+(r.memo?'<div class="memo">'+esc(r.memo)+'</div>':'')+'</div><button type="button" class="btn sm" style="flex:none;align-self:center">✏️ 編集・追記</button></div>';
@@ -395,7 +399,7 @@ function recLine(r){
   switch(r.type){
     case 'mix':return num(r.ml)+' ml';
     case 'bowl':return bowlMl(r)+' ml（入れた'+num(r.put)+' − 残り'+num(r.left)+(num(r.evap)?' − 蒸発'+num(r.evap):'')+'）';
-    case 'food':return (r.fname||'')+' '+r1(eaten(r))+' g 食べた（水分 約'+Math.round(moist(r))+' ml）';
+    case 'food':return fItems(r).map(i=>(i.fname||'')+' '+r1(eatenI(i))+'g').join('、')+' 食べた（水分 約'+Math.round(moist(r))+' ml）';
     case 'pee':return [r.size?'量:'+lbl(PEE_SIZE,r.size):'',r.color?'色:'+r.color:''].filter(Boolean).join(' ')||'（詳細未記入）';
     case 'poop':return [r.st?lbl(POOP_ST,r.st):'',r.size?'量:'+lbl(SIZE,r.size):'',r.color?'色:'+r.color:''].filter(Boolean).join(' ')||'（詳細未記入）';
     case 'vomit':return r.kind||'';
@@ -426,7 +430,7 @@ function openForm(type,id){
     r={type,cat:c.id,t:(UI.day||today())+'T23:59',nt:true};
     if(type==='bowl'){r.put=L.put;r.evap=L.evap;}
     if(type==='mix')r.ml=L.ml;
-    if(type==='food'){r.foodId=L.foodId;}
+    if(type==='food'){r.items=fItems(L).filter(i=>foodOf(i.foodId)).map(i=>({foodId:i.foodId}));}
     if(type==='med')r.kind='投薬';
     if(type==='weight')r.kg=L.kg||c.weight||'';
   }
@@ -442,11 +446,16 @@ function openForm(type,id){
   }
   if(type==='food'){
     ensureFoods();
-    const fid=r.foodId&&foodOf(r.foodId)?r.foodId:S.foods[0].id;
-    b+='<div class="f"><label>フード</label><select id="f_food" onchange="formCalc()">'+
-      [['dry','ドライ'],['wet','ウェット']].map(k=>'<optgroup label="'+k[1]+'">'+S.foods.filter(f=>f.kind===k[0]).map(f=>'<option value="'+f.id+'"'+(f.id===fid?' selected':'')+'>'+esc(f.name)+'（水分'+f.pct+'%）</option>').join('')+'</optgroup>').join('')+
-      '</select><div class="sub">フードの種類と水分率は「設定」で追加・変更できます。</div></div>';
-    b+='<div class="two">'+numF('f_given','与えた量',r.given,0.1,'g')+numF('f_left','残した量',r.left,0.1,'g')+'</div><div class="calc" id="calc"></div>';
+    let its=fItems(r).filter(i=>i.foodId&&foodOf(i.foodId));
+    if(!its.length)its=[{foodId:S.foods[0].id}];
+    b+='<div class="f"><label>フードと量（1回の食事に何種類でも追加できます）</label><div id="fRows">'+its.map(foodRow).join('')+'</div>'+
+      '<div class="row" style="flex-wrap:wrap;margin-top:4px"><button type="button" class="btn sm" onclick="addFoodRow()">＋ フードを追加</button><button type="button" class="btn sm" onclick="toggleNewFood()">＋ 新しいフードを登録</button></div>'+
+      '<div id="newFood" style="display:none;margin-top:8px;padding:10px;border:1px dashed var(--line);border-radius:10px">'+
+        '<div class="f"><label>フードの名前</label><input type="text" id="nf_n" placeholder="例：○○ まぐろ味"></div>'+
+        '<div class="f"><label>種類</label>'+seg('nfkind',[['dry','ドライ'],['wet','ウェット']],'wet').replace('class="seg"','class="seg" data-req="1"')+'</div>'+
+        '<div class="f"><label>水分（%）パッケージの成分表示を参照</label><input type="number" id="nf_p" inputmode="decimal" step="0.1" placeholder="ドライ約10／ウェット約75〜80"></div>'+
+        '<button type="button" class="btn sm pri" onclick="saveNewFood()">登録してこの食事に追加</button></div></div>';
+    b+='<div class="calc" id="calc"></div>';
   }
   if(type==='pee'||type==='poop')b+='<div class="sub" style="margin-bottom:8px">わからない項目は未選択のままで大丈夫です（あとから追記できます）。選んだボタンをもう一度押すと解除できます。</div>';
   if(type==='pee'){
@@ -467,10 +476,37 @@ function openForm(type,id){
   b+='<div class="row"><button class="btn pri" style="flex:1" onclick="formSave()">保存</button><button class="btn" onclick="closeModal()">キャンセル</button>'+(isNew?'':'<button class="btn warn" onclick="formDel()">削除</button>')+'</div>';
   showModal(b);formCalc();
 }
+function foodOpts(sel){
+  return [['dry','ドライ'],['wet','ウェット']].map(k=>{const fs=S.foods.filter(f=>f.kind===k[0]);return fs.length?'<optgroup label="'+k[1]+'">'+fs.map(f=>'<option value="'+f.id+'"'+(f.id===sel?' selected':'')+'>'+esc(f.name)+'（水分'+f.pct+'%）</option>').join('')+'</optgroup>':'';}).join('');
+}
+function foodRow(i){
+  const val=x=>x===undefined||x===null||x===''?'':esc(x);
+  return '<div class="frow" style="border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:6px"><div class="row"><select class="fr-food" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--bg)" onchange="formCalc()">'+foodOpts(i.foodId)+'</select><button type="button" class="btn sm" onclick="delFoodRow(this)" title="この行を削除">×</button></div>'+
+    '<div class="two" style="margin-top:6px"><div><div class="sub">与えた量(g)</div><input type="number" class="fr-g" inputmode="decimal" step="0.1" value="'+val(i.given)+'" oninput="formCalc()" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--bg)"></div>'+
+    '<div><div class="sub">残した量(g)</div><input type="number" class="fr-l" inputmode="decimal" step="0.1" value="'+val(i.left)+'" oninput="formCalc()" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--bg)"></div></div></div>';
+}
+function addFoodRow(fid){$('fRows').insertAdjacentHTML('beforeend',foodRow({foodId:fid||S.foods[0].id}));formCalc();}
+function delFoodRow(b){const rows=document.querySelectorAll('#fRows .frow');if(rows.length<=1){toast('最低1つは必要です');return;}b.closest('.frow').remove();formCalc();}
+function toggleNewFood(){const e=$('newFood');e.style.display=e.style.display==='none'?'block':'none';}
+function saveNewFood(){
+  const n=$('nf_n').value.trim();if(!n)return toast('フードの名前を入れてください');
+  const kind=segVal('nfkind')||'wet';const pv=$('nf_p').value;
+  const f={id:uid(),name:n,kind,pct:pv===''?(kind==='dry'?10:78):num(pv)};
+  S.foods.push(f);markMeta();saveLocal();flush();
+  document.querySelectorAll('#fRows .fr-food').forEach(sel=>{const v=sel.value;sel.innerHTML=foodOpts(v);});
+  const rows=[...document.querySelectorAll('#fRows .frow')];
+  const emptyRow=rows.find(rw=>rw.querySelector('.fr-g').value==='');
+  if(emptyRow&&rows.length===1)emptyRow.querySelector('.fr-food').value=f.id;else addFoodRow(f.id);
+  $('nf_n').value='';$('nf_p').value='';toggleNewFood();formCalc();toast('「'+n+'」を登録しました');
+}
+function readFoodRows(){
+  return [...document.querySelectorAll('#fRows .frow')].map(rw=>{const f=foodOf(rw.querySelector('.fr-food').value);const g=rw.querySelector('.fr-g').value;
+    return f&&g!==''?{foodId:f.id,fname:f.name,kind:f.kind,pct:num(f.pct),given:num(g),left:num(rw.querySelector('.fr-l').value)}:null;}).filter(Boolean);
+}
 function formCalc(){
   const el=$('calc');if(!el||!FORM)return;
   if(FORM.type==='bowl'){el.textContent='飲んだ量：'+bowlMl({put:$('f_put').value,left:$('f_left').value,evap:$('f_evap').value})+' ml';}
-  if(FORM.type==='food'){const f=foodOf($('f_food').value)||{pct:0};const x={given:$('f_given').value,left:$('f_left').value,pct:f.pct};el.textContent='食べた量：'+r1(eaten(x))+' g ／ フードの水分：約'+Math.round(moist(x))+' ml';}
+  if(FORM.type==='food'){const x={items:readFoodRows()};el.textContent='食べた量：合計 '+r1(eaten(x))+' g ／ フードの水分：約'+Math.round(moist(x))+' ml';}
 }
 function formSave(){
   const c=cat(), ty=FORM.type;
@@ -480,8 +516,7 @@ function formSave(){
   const v=id=>$(id).value;
   if(ty==='mix'){if(v('f_ml')==='')return toast('量を入れてください');r.ml=num(v('f_ml'));}
   if(ty==='bowl'){if(v('f_put')===''||v('f_left')==='')return toast('入れた量と残った量を入れてください');r.put=num(v('f_put'));r.left=num(v('f_left'));if(v('f_evap')!=='')r.evap=num(v('f_evap'));}
-  if(ty==='food'){const f=foodOf(v('f_food'));if(!f)return toast('フードを選んでください');if(v('f_given')==='')return toast('与えた量を入れてください');
-    r.foodId=f.id;r.fname=f.name;r.kind=f.kind;r.pct=num(f.pct);r.given=num(v('f_given'));r.left=num(v('f_left'));}
+  if(ty==='food'){const its=readFoodRows();if(!its.length)return toast('与えた量を入れてください');r.items=its;}
   if(ty==='pee'){if(segVal('size'))r.size=num(segVal('size'));if(segVal('color'))r.color=segVal('color');['blood','outside'].forEach(k=>{if($('k_'+k).checked)r[k]=true;});}
   if(ty==='poop'){if(segVal('st'))r.st=num(segVal('st'));if(segVal('size'))r.size=num(segVal('size'));if(segVal('color'))r.color=segVal('color');['blood','mucus','foreign','outside'].forEach(k=>{if($('k_'+k).checked)r[k]=true;});}
   if(ty==='vomit')r.kind=segVal('kind');
@@ -605,7 +640,7 @@ function reportHTML(from,to){
   const tot=k=>ss.reduce((a,s)=>a+s[k],0);
   let h='<h2>'+esc(c.name)+'　'+fmtDay(days[0])+'〜'+fmtDay(days[days.length-1])+'（'+days.length+'日間）</h2>';
   h+='<div class="kv"><div><span>水分 平均/日</span><b>'+Math.round(av('total'))+' ml</b></div><div><span>体重あたり</span><b>'+(pk.length?r1(pk.reduce((a,s)=>a+s.perKg,0)/pk.length):'—')+' ml/kg</b></div><div><span>水分記録日数</span><b>'+wd.length+' 日</b></div>'+
-     '<div><span>小 合計</span><b>'+tot('pee')+' 回</b></div><div><span>大 合計</span><b>'+tot('poop')+' 回</b></div><div><span>嘔吐 合計</span><b>'+tot('vomit')+' 回</b></div></div>';
+     '<div><span>小 合計</span><b>'+tot('pee')+' 回</b></div><div><span>大 合計</span><b>'+tot('poop')+' 回</b></div><div><span>嘔吐 合計</span><b>'+tot('vomit')+' 回</b></div></div>'+(()=>{const m={};ss.forEach(s=>Object.entries(s.byFood).forEach(([k,v])=>m[k]=(m[k]||0)+v));return foodBreak(m).replace('フード別に食べた量','期間中フード別に食べた量（合計）');})();
   h+='<div class="scroll" style="margin-top:10px"><table><tr><th>日付</th><th>混ぜ</th><th>器</th><th>フード</th><th>合計</th><th>ml/kg</th><th>ドライg</th><th>ウェットg</th><th>小</th><th>大(状態)</th><th>嘔吐</th><th>体重</th></tr>'+
     days.map((d,i)=>{const s=ss[i];if(!s.n)return '<tr><td>'+shortD(d)+'</td><td colspan="11" style="text-align:center;color:var(--sub)">記録なし</td></tr>';
       return '<tr><td>'+shortD(d)+'('+WD[parseD(d).getDay()]+')</td><td>'+Math.round(s.mix)+'</td><td>'+Math.round(s.bowl)+'</td><td>'+Math.round(s.food)+'</td><td><b>'+Math.round(s.total)+'</b></td><td>'+(s.perKg!=null?r1(s.perKg):'—')+'</td><td>'+r1(s.dry)+'</td><td>'+r1(s.wet)+'</td><td>'+s.pee+'</td><td>'+s.poop+(s.poopSt.length?'('+s.poopSt.join(',')+')':'')+'</td><td>'+s.vomit+'</td><td>'+(s.weight!=null?s.weight:'')+'</td></tr>';}).join('')+'</table></div>';
@@ -643,7 +678,7 @@ function vSet(){
     '<div class="sub">体重を「記録」で入れると、そちらが優先して計算に使われます。</div></div>';
   h+='<div class="card"><div class="row between"><h2 style="margin:0">フード</h2><button class="btn sm pri" onclick="editFood()">＋ 追加</button></div>'+
     S.foods.map(f=>'<div class="setitem"><div class="grow"><b>'+esc(f.name)+'</b><div class="sub">'+(f.kind==='dry'?'ドライ':'ウェット')+' ／ 水分 '+f.pct+'%</div></div><button class="btn sm" onclick="editFood(\''+f.id+'\')">編集</button></div>').join('')+
-    '<div class="sub">水分率はパッケージの成分表示の「水分」を入れてください（目安：ドライ約10%、ウェット約75〜80%）。</div></div>';
+    '<div class="sub">何種類でも登録できます。食事の入力画面からも登録できます。水分率はパッケージの成分表示の「水分」を入れてください（目安：ドライ約10%、ウェット約75〜80%）。</div></div>';
   h+='<div class="card"><h2>計算と注意表示</h2>'+
     '<div class="f chk"><label><input type="checkbox"'+(S.settings.inclFood?' checked':'')+' onchange="setSet(\'inclFood\',this.checked)">フード自体の水分を合計に含める</label></div>'+
     '<div class="two"><div class="f"><label>おしっこが無い時間（時間）</label><input type="number" value="'+S.settings.peeH+'" onchange="setSet(\'peeH\',num(this.value)||24)"></div><div class="f"><label>うんちが無い日数（日）</label><input type="number" value="'+S.settings.poopD+'" onchange="setSet(\'poopD\',num(this.value)||3)"></div></div>'+
