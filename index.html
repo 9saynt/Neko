@@ -169,10 +169,35 @@ function toast(msg,actLabel,act){
 }
 
 /* ========== 保存（端末＋クラウド） ========== */
-function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}}
+/* 保存先：IndexedDB（大容量）。使えない環境では localStorage に保存 */
+let IDBP=null, saveWarned=false;
+function idb(){
+  if(IDBP)return IDBP;
+  IDBP=new Promise((res)=>{
+    try{const q=indexedDB.open('nekoMizu',1);
+      q.onupgradeneeded=()=>q.result.createObjectStore('kv');
+      q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);q.onblocked=()=>res(null);
+    }catch(e){res(null);}
+  });
+  return IDBP;
+}
+function idbGet(k){return idb().then(db=>db?new Promise(res=>{try{const r=db.transaction('kv').objectStore('kv').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>res(undefined);}catch(e){res(undefined);}}):undefined);}
+function idbPut(k,v){return idb().then(db=>db?new Promise(res=>{try{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res(true);t.onerror=t.onabort=()=>res(false);}catch(e){res(false);}}):false);}
+let saveChain=Promise.resolve();
+function saveLocal(){
+  const snap=JSON.stringify(S);
+  saveChain=saveChain.then(async()=>{
+    const ok=await idbPut('state',snap);
+    if(ok){try{localStorage.removeItem(LS_KEY);}catch(e){}return;}
+    try{localStorage.setItem(LS_KEY,snap);}
+    catch(e){if(!saveWarned){saveWarned=true;toast('⚠ 端末の保存容量が足りず保存できませんでした。すぐにバックアップを保存してください');}}
+  });
+}
 function saveUI(){try{localStorage.setItem(UI_KEY,JSON.stringify({cat:UI.cat,gDays:UI.gDays}));}catch(e){}}
-function loadLocal(){
-  try{const j=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(j&&j.cats)S=normalize(j);}catch(e){}
+async function loadLocal(){
+  let raw=await idbGet('state');
+  if(!raw){try{raw=localStorage.getItem(LS_KEY);}catch(e){}}
+  try{const j=JSON.parse(raw||'null');if(j&&j.cats)S=normalize(j);}catch(e){}
   try{const u=JSON.parse(localStorage.getItem(UI_KEY)||'null');if(u){UI.cat=u.cat;UI.gDays=u.gDays||7;}}catch(e){}
 }
 function normalize(j){
@@ -702,7 +727,7 @@ function importFile(inp){
 }
 
 /* ========== 起動 ========== */
-loadLocal();render();initCloud();
+loadLocal().then(()=>{render();initCloud();});
 if(!FRAMED){
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
